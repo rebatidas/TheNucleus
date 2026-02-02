@@ -15,6 +15,6 @@ The project is being developed as a semester-long application following real-wor
 -- The project description and feature set will be updated accordingly to reflect the evolving scope and capabilities of the application. --
 
 ### Project Members
-- Rebati Das  
-- Romit Das Gupta
+- Rebati Das (back-end engineer)  
+- Romit Das Gupta (front-end engineer)
 
