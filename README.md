@@ -17,4 +17,4 @@ The project is being developed as a semester-long application following real-wor
 ### Project Members
 - Rebati Das (back-end engineer)  
 - Romit Das Gupta (front-end engineer)
-
+- Ruhi Reddy (front-end engineer)
