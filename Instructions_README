@@ -1,0 +1,176 @@
+# 🚀 TheNucleus — Team Setup & Onboarding Guide
+
+Welcome to TheNucleus CRM project.
+
+This document explains:
+1. Required software/tools
+2. What has been implemented so far
+3. How to clone and set up the project on macOS
+4. How to run backend and frontend locally
+
+---
+
+# 1️⃣ Required Software / Tools
+
+All team members must install the following:
+
+## Backend
+- ✅ Go (1.21+)
+- ✅ PostgreSQL (recommended)
+  OR
+- ✅ Docker (optional alternative for DB)
+
+## Frontend
+- ✅ Node.js (LTS version)
+- ✅ npm (comes with Node)
+
+## Development Tools
+- ✅ VS Code
+- ✅ Git
+- ✅ Postman (for API testing)
+
+---
+
+## 2️⃣ 🔍 Verify Installations
+
+Open Terminal and verify:
+
+```bash
+go version
+node -v
+npm -v
+psql --version
+git --version
+
+/Each command must return a version number.
+If any command fails, install the missing software before proceeding./
+
+## 3️⃣ Project Overview
+
+Backend (Go + Gin + GORM)
+backend/
+  config/
+  controllers/
+  middleware/
+  models/
+  routes/
+  main.go
+
+Completed Features:
+- PostgreSQL database connection
+- User model
+- Password hashing (bcrypt)
+- JWT authentication
+- Register endpoint
+- Login endpoint
+- Clean routing structure
+- dev branch created
+- main branch protected
+
+Available API Endpoints
+  POST /api/auth/register
+  POST /api/auth/login
+
+Backend runs on: http://localhost:8080
+
+Frontend (React + Vite)
+Structure:
+  frontend/
+  src/
+  public/
+  package.json
+
+Installed:
+ - React
+ - Vite
+ - Axios
+ - React Router DOM
+
+Frontend runs on: http://localhost:5173
+
+4️⃣ Clone Repository (macOS)
+
+Open Terminal:
+  cd ~/Documents
+  git clone https://github.com/rebatidas/TheNucleus.git
+  cd TheNucleus
+
+Switch to development branch:
+  git checkout dev
+
+5️⃣ Open Project in VS Code
+
+If VS Code CLI is enabled:
+
+code .
+
+
+If not:
+
+Open VS Code → File → Open Folder → Select TheNucleus
+
+6️⃣ Database Setup (PostgreSQL)
+
+Install PostgreSQL if not installed.
+Create database: createdb TheNucleus
+
+If that fails, open PostgreSQL manually and create a database named: TheNucleus
+
+7️⃣ Backend Setup
+
+Navigate to backend:
+  cd backend
+Install dependencies:
+  go mod tidy
+
+
+Open: backend/config/db.go
+Update database password to match your local PostgreSQL password.
+Run backend:
+  go run main.go
+Expected output:
+  Database connected successfully
+  Listening and serving HTTP on :8080
+
+Test backend:
+  Open browser: http://localhost:8080
+
+8️⃣ Frontend Setup
+
+Open a new terminal window.
+Navigate to frontend:
+  cd frontend
+  npm install
+  npm run dev
+
+Open browser: http://localhost:5173
+
+You should see the React starter screen.
+
+9️⃣ Git Workflow (MANDATORY)
+
+❌ Never push directly to main.
+
+Always follow this workflow:
+
+git checkout dev
+git checkout -b feature/your-feature-name
+
+
+After finishing work:
+
+git add .
+git commit -m "Feature description"
+git push -u origin feature/your-feature-name
+
+
+Create Pull Request → merge into dev.
+
+Only stable code moves from dev → main.
+
+
+| Service    | Port |
+| ---------- | ---- |
+| Backend    | 8080 |
+| Frontend   | 5173 |
+| PostgreSQL | 5432 |
