@@ -28,7 +28,7 @@ export default function Dashboard() {
         <aside style={styles.sidebar}>
           <div style={styles.sidebarItem}>Dashboard</div>
           <div style={styles.sidebarItem}>Cases</div>
-          <div style={styles.sidebarItem}>Customers</div>
+          <div style={styles.sidebarItem} onClick={() => navigate("/customers")}>Customers</div>
           <div style={styles.sidebarItem}>Reports</div>
         </aside>
 
