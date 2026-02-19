@@ -1,47 +1,74 @@
-import { useState } from "react";
-import axios from "axios";
+import { Form, Input, Button, message } from "antd";
+import AppLayout from "../components/AppLayout";
+import { api } from "../api/client";
+
+type FormValues = {
+  salutation?: string;
+  first_name: string;
+  middle_name?: string;
+  last_name: string;
+  email: string;
+  phone: string;
+  shipping_address?: string;
+  billing_address?: string;
+};
 
 export default function Customers() {
-  const [form, setForm] = useState({
-    salutation: "",
-    first_name: "",
-    middle_name: "",
-    last_name: "",
-    email: "",
-    phone: "",
-    shipping_address: "",
-    billing_address: "",
-  });
+  const [form] = Form.useForm<FormValues>();
 
-  const handleChange = (e: any) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
-
-  const handleSubmit = async () => {
+  const handleSubmit = async (values: FormValues) => {
     try {
-      await axios.post("http://localhost:8080/api/customers", form);
-      alert("Customer created successfully!");
-    } catch (error) {
-      alert("Error creating customer");
+      await api.post("/api/customers", values);
+      message.success("Customer created successfully");
+      form.resetFields();
+    } catch (err: any) {
+      message.error(err?.response?.data?.message ?? "Error creating customer");
     }
   };
 
   return (
-    <div style={{ padding: "40px" }}>
-      <h2>Create Customer</h2>
+    <AppLayout title="Customers">
+      <div style={{ maxWidth: 720 }}>
+        <Form form={form} layout="vertical" onFinish={handleSubmit}>
+          <Form.Item name="salutation" label="Salutation">
+            <Input />
+          </Form.Item>
 
-      <div style={{ display: "grid", gap: "15px", maxWidth: "600px" }}>
-        <input name="salutation" placeholder="Salutation" onChange={handleChange} />
-        <input name="first_name" placeholder="First Name *" onChange={handleChange} />
-        <input name="middle_name" placeholder="Middle Name" onChange={handleChange} />
-        <input name="last_name" placeholder="Last Name *" onChange={handleChange} />
-        <input name="email" placeholder="Email *" onChange={handleChange} />
-        <input name="phone" placeholder="Phone *" onChange={handleChange} />
-        <input name="shipping_address" placeholder="Shipping Address" onChange={handleChange} />
-        <input name="billing_address" placeholder="Billing Address" onChange={handleChange} />
+          <Form.Item name="first_name" label="First name" rules={[{ required: true }]}>
+            <Input />
+          </Form.Item>
 
-        <button onClick={handleSubmit}>Save</button>
+          <Form.Item name="middle_name" label="Middle name">
+            <Input />
+          </Form.Item>
+
+          <Form.Item name="last_name" label="Last name" rules={[{ required: true }]}>
+            <Input />
+          </Form.Item>
+
+          <Form.Item name="email" label="Email" rules={[{ required: true, type: "email" }]}>
+            <Input />
+          </Form.Item>
+
+          <Form.Item name="phone" label="Phone" rules={[{ required: true }]}>
+            <Input />
+          </Form.Item>
+
+          <Form.Item name="shipping_address" label="Shipping address">
+            <Input.TextArea rows={3} />
+          </Form.Item>
+
+          <Form.Item name="billing_address" label="Billing address">
+            <Input.TextArea rows={3} />
+          </Form.Item>
+
+          <Form.Item>
+            <Button type="primary" htmlType="submit">
+              Save
+            </Button>
+          </Form.Item>
+        </Form>
       </div>
-    </div>
+    </AppLayout>
   );
 }
