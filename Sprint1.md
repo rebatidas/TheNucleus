@@ -4,6 +4,7 @@ The goal of Sprint 1 was to build the foundational skeleton of TheNucleus CRM, i
 This sprint focused on establishing the core architecture so future CRM features (cases, reports, workflows, etc.) can be built on top of a stable system.
 
 🧾 User Stories
+
 ✅ US-1: User Registration
   As a new user,
   I want to register with my name, email, and password,so that I can create an account in TheNucleus.
