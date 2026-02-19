@@ -1,50 +1,54 @@
-import { useState } from "react";
+import React from "react";
+import { Form, Input, Button, Alert } from "antd";
 import { api, setAuthToken } from "../api/client";
 import { Link, useNavigate } from "react-router-dom";
+import AppLayout from "../components/AppLayout";
 
 export default function Login() {
   const nav = useNavigate();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [msg, setMsg] = useState<string | null>(null);
+  const [form] = Form.useForm();
+  const [error, setError] = React.useState<string | null>(null);
 
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setMsg(null);
-
+  async function onFinish(values: any) {
+    setError(null);
     try {
-      const res = await api.post("/api/auth/login", { email, password });
+      const res = await api.post("/api/auth/login", values);
       const token = res.data?.data?.token;
-
       if (!token) throw new Error("Token missing from response");
-
       localStorage.setItem("token", token);
       setAuthToken(token);
-
       nav("/dashboard");
     } catch (err: any) {
-      setMsg(err?.response?.data?.message ?? "Login failed");
+      setError(err?.response?.data?.message ?? "Login failed");
     }
   }
 
   return (
-    <div style={{ maxWidth: 420, margin: "60px auto", fontFamily: "system-ui" }}>
-      <h2>Login</h2>
-      <form onSubmit={onSubmit}>
-        <label>Email</label>
-        <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" required style={{ width: "100%", padding: 10, margin: "6px 0 14px" }} />
+    <AppLayout title="" showSidebar={false}>
+      <div style={{ maxWidth: 420, margin: "60px auto" }}>
+        <h2 style={{ color: "#032d60" }}>Login</h2>
+        <Form form={form} layout="vertical" onFinish={onFinish}>
+          <Form.Item name="email" label="Email" rules={[{ required: true, type: "email" }]}>
+            <Input />
+          </Form.Item>
 
-        <label>Password</label>
-        <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" required style={{ width: "100%", padding: 10, margin: "6px 0 14px" }} />
+          <Form.Item name="password" label="Password" rules={[{ required: true }]}>
+            <Input.Password />
+          </Form.Item>
 
-        <button type="submit" style={{ width: "100%", padding: 10 }}>Login</button>
-      </form>
+          <Form.Item>
+            <Button type="primary" htmlType="submit" style={{ width: "100%" }}>
+              Login
+            </Button>
+          </Form.Item>
+        </Form>
 
-      {msg && <p style={{ marginTop: 12 }}>{msg}</p>}
+        {error && <Alert type="error" message={error} />}
 
-      <p style={{ marginTop: 16 }}>
-        New here? <Link to="/register">Create an account</Link>
-      </p>
-    </div>
+        <p style={{ marginTop: 16 }}>
+          New here? <Link to="/register">Create an account</Link>
+        </p>
+      </div>
+    </AppLayout>
   );
 }

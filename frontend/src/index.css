@@ -24,10 +24,19 @@ a:hover {
 
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
   min-width: 320px;
   min-height: 100vh;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+/* Ensure the React root fills the available space so children can be 100% width */
+#root {
+  display: flex;
+  flex: 1 1 auto;
+  width: 100%;
 }
 
 h1 {

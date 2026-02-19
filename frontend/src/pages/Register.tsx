@@ -1,20 +1,18 @@
-import { useState } from "react";
+import React from "react";
+import { Form, Input, Button, Alert } from "antd";
 import { api } from "../api/client";
 import { Link, useNavigate } from "react-router-dom";
+import AppLayout from "../components/AppLayout";
 
 export default function Register() {
   const nav = useNavigate();
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [msg, setMsg] = useState<string | null>(null);
+  const [form] = Form.useForm();
+  const [msg, setMsg] = React.useState<string | null>(null);
 
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function onFinish(values: any) {
     setMsg(null);
-
     try {
-      const res = await api.post("/api/auth/register", { name, email, password });
+      const res = await api.post("/api/auth/register", values);
       setMsg(res.data?.message ?? "Registered successfully");
       nav("/login");
     } catch (err: any) {
@@ -23,26 +21,35 @@ export default function Register() {
   }
 
   return (
-    <div style={{ maxWidth: 420, margin: "60px auto", fontFamily: "system-ui" }}>
-      <h2>Create account</h2>
-      <form onSubmit={onSubmit}>
-        <label>Name</label>
-        <input value={name} onChange={(e) => setName(e.target.value)} required style={{ width: "100%", padding: 10, margin: "6px 0 14px" }} />
+    <AppLayout title="" showSidebar={false}>
+      <div style={{ maxWidth: 420, margin: "60px auto" }}>
+        <h2 style={{ color: "#032d60" }}>Create account</h2>
+        <Form form={form} layout="vertical" onFinish={onFinish}>
+          <Form.Item name="name" label="Name" rules={[{ required: true }]}>
+            <Input />
+          </Form.Item>
 
-        <label>Email</label>
-        <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" required style={{ width: "100%", padding: 10, margin: "6px 0 14px" }} />
+          <Form.Item name="email" label="Email" rules={[{ required: true, type: "email" }]}>
+            <Input />
+          </Form.Item>
 
-        <label>Password</label>
-        <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" required style={{ width: "100%", padding: 10, margin: "6px 0 14px" }} />
+          <Form.Item name="password" label="Password" rules={[{ required: true }]}>
+            <Input.Password />
+          </Form.Item>
 
-        <button type="submit" style={{ width: "100%", padding: 10 }}>Register</button>
-      </form>
+          <Form.Item>
+            <Button type="primary" htmlType="submit" style={{ width: "100%" }}>
+              Register
+            </Button>
+          </Form.Item>
+        </Form>
 
-      {msg && <p style={{ marginTop: 12 }}>{msg}</p>}
+        {msg && <Alert message={msg} style={{ marginTop: 12 }} />}
 
-      <p style={{ marginTop: 16 }}>
-        Already have an account? <Link to="/login">Login</Link>
-      </p>
-    </div>
+        <p style={{ marginTop: 16 }}>
+          Already have an account? <Link to="/login">Login</Link>
+        </p>
+      </div>
+    </AppLayout>
   );
 }

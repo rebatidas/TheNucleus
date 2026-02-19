@@ -1,8 +1,29 @@
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { setAuthToken } from "../api/client";
+import { setAuthToken, api } from "../api/client";
+import "antd/dist/reset.css";
+import { Table, Spin, Empty, Alert } from "antd";
+import AppLayout from "../components/AppLayout";
+
+interface CaseItem {
+  id: number;
+  title: string;
+  status: string;
+  created_at?: string;
+}
+
+const mockCases: CaseItem[] = [
+  { id: 1, title: "Website outage - client A", status: "open", created_at: new Date().toISOString() },
+  { id: 2, title: "Billing discrepancy - client B", status: "in_progress", created_at: new Date(Date.now() - 86400000).toISOString() },
+  { id: 3, title: "Feature request: export CSV", status: "closed", created_at: new Date(Date.now() - 3 * 86400000).toISOString() },
+  { id: 4, title: "Data sync failed - nightly job", status: "open", created_at: new Date(Date.now() - 6 * 3600000).toISOString() },
+];
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const [cases, setCases] = useState<CaseItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -10,54 +31,59 @@ export default function Dashboard() {
     navigate("/login");
   };
 
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      // no auth token — show mock data in dev/local scenarios
+      setCases(mockCases);
+      return;
+    }
+    setAuthToken(token);
+    setLoading(true);
+    api
+      .get("/api/cases")
+      .then((res) => {
+        const data = res.data?.data?.cases ?? [];
+        setCases(data);
+      })
+      .catch((err) => {
+        // fallback to mock data so dashboard remains usable offline
+        setCases(mockCases);
+        setError(null);
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  const columns = [
+    { title: "Title", dataIndex: "title", key: "title" },
+    { title: "Status", dataIndex: "status", key: "status" },
+    {
+      title: "Created",
+      dataIndex: "created_at",
+      key: "created_at",
+      render: (val: string) => (val ? new Date(val).toLocaleString() : "-"),
+    },
+  ];
+
   return (
-    <div style={styles.appContainer}>
-      
-      {/* Top Navigation Bar */}
-      <header style={styles.header}>
-        <div style={styles.logo}>TheNucleus</div>
-        <button style={styles.logoutBtn} onClick={handleLogout}>
-          Logout
-        </button>
-      </header>
-
-      {/* Main Layout */}
-      <div style={styles.bodyContainer}>
-        
-        {/* Sidebar */}
-        <aside style={styles.sidebar}>
-          <div style={styles.sidebarItem}>Dashboard</div>
-          <div style={styles.sidebarItem}>Cases</div>
-          <div style={styles.sidebarItem} onClick={() => navigate("/customers")}>Customers</div>
-          <div style={styles.sidebarItem}>Reports</div>
-        </aside>
-
-        {/* Main Content */}
-        <main style={styles.mainContent}>
-          <h1 style={styles.welcomeTitle}>
-            Welcome to TheNucleus!
-          </h1>
-
-          <p style={styles.subtitle}>
-            Your centralized CRM platform for managing customers,
-            service cases, and operational workflows.
-          </p>
-
-          <div style={styles.infoBox}>
-            <h3>System Status</h3>
-            <p>Authentication system is active.</p>
-            <p>Database connection successful.</p>
-          </div>
-        </main>
-
-      </div>
-    </div>
+    <AppLayout title="My Cases">
+      {loading ? (
+        <Spin tip="Loading cases..." />
+      ) : error ? (
+        <Alert type="error" message={error} />
+      ) : cases.length === 0 ? (
+        <Empty description="No cases found" />
+      ) : (
+        <Table rowKey={(r: any) => r.id} dataSource={cases} columns={columns} />
+      )}
+    </AppLayout>
   );
 }
 
 const styles = {
   appContainer: {
-    height: "100vh",
+    height: "100%",
+    width: "100%",
     display: "flex",
     flexDirection: "column" as const,
     fontFamily: "Inter, system-ui, sans-serif",
