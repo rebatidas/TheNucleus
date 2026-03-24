@@ -19,7 +19,7 @@ func SetupRoutes(r *gin.Engine) {
 		api.GET("/customers/:id", controllers.GetCustomerByID)
 		api.PUT("/customers/:id", controllers.UpdateCustomer)
 		api.DELETE("/customers/:id", controllers.DeleteCustomer)
-		api.GET("/customers/:customerId/cases", controllers.GetCasesByCustomerID)
+		api.GET("/customer-cases/:customerId", controllers.GetCasesByCustomerID)
 		api.POST("/cases", controllers.CreateCase)
 
 		// Case routes

@@ -99,7 +99,7 @@ export default function CustomerRecord() {
     try {
       setCasesLoading(true);
       const response = await api.get<CustomerCasesResponse>(
-        `/api/customers/${id}/cases`
+        `/api/customer-cases/${id}`
       );
       setCustomerCases(response.data.data || []);
     } catch (err: any) {
@@ -284,37 +284,100 @@ export default function CustomerRecord() {
           style={{ position: "sticky", top: 24 }}
           loading={casesLoading}
         >
-          {customerCases.length === 0 ? (
-            <div style={{ color: "#666" }}>No related cases found</div>
-          ) : (
-            <Space direction="vertical" size={12} style={{ width: "100%" }}>
-              {customerCases.map((caseItem) => (
-                <Card
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1.2fr 2fr 1fr",
+              padding: "8px 12px",
+              background: "#fafafa",
+              border: "1px solid #f0f0f0",
+              borderBottom: "none",
+              fontWeight: 600,
+              fontSize: 13,
+            }}
+          >
+            <div>Case Number</div>
+            <div>Subject</div>
+            <div>Status</div>
+          </div>
+
+          <div
+            style={{
+              border: "1px solid #f0f0f0",
+              borderTop: "none",
+            }}
+          >
+            {customerCases.length === 0 ? (
+              <div style={{ padding: 12, color: "#666" }}>
+                No related cases found
+              </div>
+            ) : (
+              customerCases.map((caseItem, index) => (
+                <div
                   key={caseItem.id}
-                  size="small"
-                  style={{ background: "#fafafa" }}
-                  styles={{ body: { padding: 12 } }}
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1.2fr 2fr 1fr",
+                    padding: "10px 12px",
+                    borderBottom:
+                      index !== customerCases.length - 1
+                        ? "1px solid #f5f5f5"
+                        : "none",
+                    alignItems: "center",
+                    fontSize: 13,
+                  }}
                 >
-                  <div style={{ marginBottom: 6 }}>
-                    <strong>Case Number: </strong>
-                    <Link to={`/cases/${caseItem.id}`}>
+                  <div>
+                    <Link
+                      to={`/cases/${caseItem.id}`}
+                      style={{
+                        color: "#1677ff",
+                        fontWeight: 500,
+                      }}
+                    >
                       {caseItem.case_number}
                     </Link>
                   </div>
 
-                  <div style={{ marginBottom: 6 }}>
-                    <strong>Subject: </strong>
-                    <span>{caseItem.subject || "-"}</span>
+                  <div
+                    style={{
+                      color: "#333",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                    title={caseItem.subject || "-"}
+                  >
+                    {caseItem.subject || "-"}
                   </div>
 
                   <div>
-                    <strong>Status: </strong>
-                    <span>{caseItem.status || "-"}</span>
+                    <span
+                      style={{
+                        padding: "2px 8px",
+                        borderRadius: 12,
+                        fontSize: 12,
+                        background:
+                          caseItem.status === "Closed"
+                            ? "#f6ffed"
+                            : caseItem.status === "In Progress"
+                            ? "#e6f4ff"
+                            : "#fff7e6",
+                        color:
+                          caseItem.status === "Closed"
+                            ? "#389e0d"
+                            : caseItem.status === "In Progress"
+                            ? "#1677ff"
+                            : "#d48806",
+                      }}
+                    >
+                      {caseItem.status}
+                    </span>
                   </div>
-                </Card>
-              ))}
-            </Space>
-          )}
+                </div>
+              ))
+            )}
+          </div>
         </Card>
       </div>
 
@@ -326,7 +389,11 @@ export default function CustomerRecord() {
         width={700}
         destroyOnClose
       >
-        <Form form={customerForm} layout="vertical" onFinish={handleUpdate}>
+        <Form
+          form={customerForm}
+          layout="vertical"
+          onFinish={handleUpdate}
+        >
           <Form.Item name="salutation" label="Salutation">
             <Input />
           </Form.Item>

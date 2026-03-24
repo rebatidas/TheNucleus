@@ -20,5 +20,5 @@ type Case struct {
 	UpdatedAt      time.Time      `json:"last_modified_date"`
 	DeletedAt      gorm.DeletedAt `json:"-" gorm:"index"`
 
-	Customer Customer `json:"customer" gorm:"foreignKey:CustomerID"`
+	Customer Customer `json:"customer,omitempty" gorm:"foreignKey:CustomerID" binding:"-"`
 }

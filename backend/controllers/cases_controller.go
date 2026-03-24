@@ -3,7 +3,6 @@ package controllers
 import (
 	"fmt"
 	"net/http"
-	"time"
 
 	"thenucleus-backend/config"
 	"thenucleus-backend/models"
@@ -12,7 +11,14 @@ import (
 )
 
 func generateCaseNumber() string {
-	return fmt.Sprintf("CASE-%d", time.Now().UnixMilli())
+	var lastCase models.Case
+
+	err := config.DB.Order("id desc").First(&lastCase).Error
+	if err != nil || lastCase.ID == 0 {
+		return "CASE-1001"
+	}
+
+	return fmt.Sprintf("CASE-%d", lastCase.ID+1001)
 }
 
 func CreateCase(c *gin.Context) {
