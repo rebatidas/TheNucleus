@@ -1,10 +1,12 @@
+import React from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import Customers from "./pages/Customers";
+import CustomerRecord from "./pages/CustomerRecord";
 
-function ProtectedRoute({ children }: { children: JSX.Element }) {
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const token = localStorage.getItem("token");
   return token ? children : <Navigate to="/login" replace />;
 }
@@ -16,7 +18,22 @@ export default function App() {
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/register" element={<Register />} />
         <Route path="/login" element={<Login />} />
-        <Route path="/customers" element={<Customers />} />
+        <Route
+          path="/customers"
+          element={
+            <ProtectedRoute>
+              <Customers />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/customers/:id"
+          element={
+            <ProtectedRoute>
+              <CustomerRecord />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/dashboard"
           element={
