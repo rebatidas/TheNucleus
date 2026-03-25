@@ -5,6 +5,8 @@ import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import Customers from "./pages/Customers";
 import CustomerRecord from "./pages/CustomerRecord";
+import Cases from "./pages/Cases";
+import CaseRecord from "./pages/CaseRecord";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const token = localStorage.getItem("token");
@@ -18,6 +20,16 @@ export default function App() {
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/register" element={<Register />} />
         <Route path="/login" element={<Login />} />
+
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+
         <Route
           path="/customers"
           element={
@@ -34,11 +46,20 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+
         <Route
-          path="/dashboard"
+          path="/cases"
           element={
             <ProtectedRoute>
-              <Dashboard />
+              <Cases />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/cases/:id"
+          element={
+            <ProtectedRoute>
+              <CaseRecord />
             </ProtectedRoute>
           }
         />
