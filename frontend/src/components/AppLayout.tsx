@@ -18,29 +18,68 @@ export default function AppLayout({ children, title, showSidebar = true }: Props
   }
 
   return (
-    <div style={styles.appContainer}>
-      <header style={styles.header}>
+    <div style={styles.appContainer} data-cy="app-layout">
+      <header style={styles.header} data-cy="app-header">
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={styles.logo}>TheNucleus</div>
+          <div style={styles.logo} data-cy="app-logo">
+            TheNucleus
+          </div>
         </div>
 
         {token ? (
-          <button style={styles.logoutBtn} onClick={handleLogout}>Logout</button>
+          <button
+            style={styles.logoutBtn}
+            onClick={handleLogout}
+            data-cy="logout-button"
+          >
+            Logout
+          </button>
         ) : null}
       </header>
 
-      <div style={styles.bodyContainer}>
+      <div style={styles.bodyContainer} data-cy="app-body">
         {showSidebar && (
-          <aside style={styles.sidebar}>
-            <div style={styles.sidebarItem} onClick={() => navigate("/dashboard")}>Dashboard</div>
-            <div style={styles.sidebarItem} onClick={() => navigate("/customers")}>Customers</div>
-            <div style={styles.sidebarItem}>Reports</div>
+          <aside style={styles.sidebar} data-cy="app-sidebar">
+            <div
+              style={styles.sidebarItem}
+              onClick={() => navigate("/dashboard")}
+              data-cy="nav-dashboard"
+            >
+              Dashboard
+            </div>
+
+            <div
+              style={styles.sidebarItem}
+              onClick={() => navigate("/customers")}
+              data-cy="nav-customers"
+            >
+              Customers
+            </div>
+
+            <div
+              style={styles.sidebarItem}
+              onClick={() => navigate("/cases")}
+              data-cy="nav-cases"
+            >
+              Cases
+            </div>
+
+            <div
+              style={styles.sidebarItem}
+              data-cy="nav-reports"
+            >
+              Reports
+            </div>
           </aside>
         )}
 
-        <main style={styles.mainContent}>
-          <div style={styles.contentInner}>
-            {title && <h1 style={styles.welcomeTitle}>{title}</h1>}
+        <main style={styles.mainContent} data-cy="app-main-content">
+          <div style={styles.contentInner} data-cy="app-content-inner">
+            {title && (
+              <h1 style={styles.welcomeTitle} data-cy="page-title">
+                {title}
+              </h1>
+            )}
             {children}
           </div>
         </main>
@@ -83,7 +122,6 @@ const styles = {
     color: "white",
     cursor: "pointer",
   },
-
 
   bodyContainer: {
     flex: 1,
