@@ -1,7 +1,6 @@
 package config
 
 import (
-	"database/sql"
 	"fmt"
 	"log"
 
@@ -12,32 +11,15 @@ import (
 var DB *gorm.DB
 
 func ConnectDB() {
-	dsn := "host=localhost user=postgres password=pass dbname=thenucleus port=5433 sslmode=disable"
+
+	dsn := "host=localhost user=postgres password=pass dbname=thenucleus port=5432"
+
 	database, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
 		log.Fatal("Failed to connect to database:", err)
 	}
 
-	sqlDB, err := database.DB()
-	if err != nil {
-		log.Fatal("Failed to get generic DB object:", err)
-	}
-
-	checkDatabaseName(sqlDB)
-
 	fmt.Println("Database connected successfully")
 
 	DB = database
-}
-
-func checkDatabaseName(sqlDB *sql.DB) {
-	var dbName string
-
-	err := sqlDB.QueryRow("SELECT current_database()").Scan(&dbName)
-	if err != nil {
-		log.Println("Could not verify current database:", err)
-		return
-	}
-
-	log.Println("Connected to PostgreSQL database:", dbName)
 }

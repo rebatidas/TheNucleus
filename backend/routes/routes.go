@@ -2,6 +2,7 @@ package routes
 
 import (
 	"thenucleus-backend/controllers"
+	"thenucleus-backend/middleware"
 
 	"github.com/gin-gonic/gin"
 )
@@ -24,5 +25,16 @@ func SetupRoutes(r *gin.Engine) {
 
 		// Case routes
 		api.GET("/cases", controllers.GetCases)
+
+		// Protected routes (require auth)
+		apiAuth := api.Group("/")
+		apiAuth.Use(middleware.AuthMiddleware())
+		{
+			apiAuth.GET("/me", controllers.Me)
+			apiAuth.PUT("/me", controllers.UpdateMe)
+			apiAuth.GET("/users", controllers.ListUsers)
+			apiAuth.POST("/queues", controllers.CreateQueue)
+			apiAuth.GET("/queues", controllers.ListQueues)
+		}
 	}
 }

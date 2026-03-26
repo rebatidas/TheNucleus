@@ -12,7 +12,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-var jwtSecret = []byte("supersecretkey")
+var jwtSecret = config.JWTSecret
 
 func Register(c *gin.Context) {
 	var input models.User

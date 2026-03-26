@@ -1,5 +1,8 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
+import { setAuthToken } from "../api/client";
+import { Dropdown, Button } from "antd";
+import { SettingOutlined } from "@ant-design/icons";
 import "antd/dist/reset.css";
 
 type Props = {
@@ -14,6 +17,7 @@ export default function AppLayout({ children, title, showSidebar = true }: Props
 
   function handleLogout() {
     localStorage.removeItem("token");
+    setAuthToken(null);
     navigate("/login");
   }
 
@@ -25,7 +29,25 @@ export default function AppLayout({ children, title, showSidebar = true }: Props
         </div>
 
         {token ? (
-          <button style={styles.logoutBtn} onClick={handleLogout}>Logout</button>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <Dropdown
+              menu={{
+                items: [
+                  { key: "profile", label: "Profile" },
+                  { key: "setup", label: "Setup" },
+                  { key: "logout", label: "Logout" },
+                ],
+                onClick: ({ key }) => {
+                  if (key === "profile") navigate("/profile");
+                  if (key === "setup") navigate("/setup");
+                  if (key === "logout") handleLogout();
+                },
+              }}
+              placement="bottomRight"
+            >
+              <Button shape="circle" icon={<SettingOutlined />} />
+            </Dropdown>
+          </div>
         ) : null}
       </header>
 
