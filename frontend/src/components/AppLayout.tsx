@@ -1,5 +1,8 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
+import { Dropdown, Button } from "antd";
+import type { MenuProps } from "antd";
+import { SettingOutlined } from "@ant-design/icons";
 import "antd/dist/reset.css";
 
 type Props = {
@@ -17,6 +20,28 @@ export default function AppLayout({ children, title, showSidebar = true }: Props
     navigate("/login");
   }
 
+  const items: MenuProps["items"] = [
+    { key: "profile", label: "Profile" },
+    { key: "setup", label: "Setup" },
+    { key: "logout", label: "Logout" },
+  ];
+
+  const handleMenuClick: MenuProps["onClick"] = ({ key }) => {
+    if (key === "profile") {
+      navigate("/profile");
+      return;
+    }
+
+    if (key === "setup") {
+      window.open("/setup", "_blank");
+      return;
+    }
+
+    if (key === "logout") {
+      handleLogout();
+    }
+  };
+
   return (
     <div style={styles.appContainer} data-cy="app-layout">
       <header style={styles.header} data-cy="app-header">
@@ -27,13 +52,15 @@ export default function AppLayout({ children, title, showSidebar = true }: Props
         </div>
 
         {token ? (
-          <button
-            style={styles.logoutBtn}
-            onClick={handleLogout}
-            data-cy="logout-button"
-          >
-            Logout
-          </button>
+          <Dropdown menu={{ items, onClick: handleMenuClick }} trigger={["click"]}>
+            <Button
+              type="primary"
+              shape="circle"
+              icon={<SettingOutlined />}
+              style={styles.gearBtn}
+              data-cy="header-gear-menu"
+            />
+          </Dropdown>
         ) : null}
       </header>
 
@@ -64,10 +91,7 @@ export default function AppLayout({ children, title, showSidebar = true }: Props
               Cases
             </div>
 
-            <div
-              style={styles.sidebarItem}
-              data-cy="nav-reports"
-            >
+            <div style={styles.sidebarItem} data-cy="nav-reports">
               Reports
             </div>
           </aside>
@@ -114,13 +138,9 @@ const styles = {
     letterSpacing: "0.5px",
   },
 
-  logoutBtn: {
+  gearBtn: {
     backgroundColor: "#0176d3",
     border: "none",
-    padding: "8px 16px",
-    borderRadius: "6px",
-    color: "white",
-    cursor: "pointer",
   },
 
   bodyContainer: {

@@ -14,8 +14,15 @@ export default function Login() {
     try {
       const res = await api.post("/api/auth/login", values);
       const token = res.data?.data?.token;
+      const user = res.data?.data?.user;
+
       if (!token) throw new Error("Token missing from response");
+
       localStorage.setItem("token", token);
+      if (user) {
+        localStorage.setItem("user", JSON.stringify(user));
+      }
+
       setAuthToken(token);
       nav("/dashboard");
     } catch (err: any) {

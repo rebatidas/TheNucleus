@@ -28,7 +28,7 @@ func main() {
 	config.ConnectDB()
 
 	// Auto migrate models
-	config.DB.AutoMigrate(&models.User{}, &models.Customer{}, &models.Case{})
+	config.DB.AutoMigrate(&models.User{}, &models.Customer{}, &models.Case{}, &models.Queue{}, &models.CompanyInformation{})
 
 	// Setup routes
 	routes.SetupRoutes(r)

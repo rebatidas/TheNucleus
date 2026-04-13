@@ -27,5 +27,13 @@ func SetupRoutes(r *gin.Engine) {
 		api.GET("/cases/:id", controllers.GetCaseByID)
 		api.PUT("/cases/:id", controllers.UpdateCase)
 		api.DELETE("/cases/:id", controllers.DeleteCase)
+
+		api.GET("/company-information", controllers.GetCompanyInformation)
+		api.POST("/company-information", controllers.CreateCompanyInformation)
+		api.PUT("/company-information", controllers.UpdateCompanyInformation)
+
+		api.GET("/users", controllers.GetUsers)
+		api.GET("/users/:id", controllers.GetUserByID)
+		api.PUT("/users/:id", controllers.UpdateUser)
 	}
 }
