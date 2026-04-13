@@ -2,6 +2,7 @@ package routes
 
 import (
 	"thenucleus-backend/controllers"
+	"thenucleus-backend/middleware"
 
 	"github.com/gin-gonic/gin"
 )
@@ -9,31 +10,41 @@ import (
 func SetupRoutes(r *gin.Engine) {
 	api := r.Group("/api")
 	{
-		// Auth routes
+		// Auth routes (no middleware)
 		api.POST("/auth/register", controllers.Register)
 		api.POST("/auth/login", controllers.Login)
 
-		// Customer routes
-		api.GET("/customers", controllers.GetCustomers)
-		api.POST("/customers", controllers.CreateCustomer)
-		api.GET("/customers/:id", controllers.GetCustomerByID)
-		api.PUT("/customers/:id", controllers.UpdateCustomer)
-		api.DELETE("/customers/:id", controllers.DeleteCustomer)
-		api.GET("/customer-cases/:customerId", controllers.GetCasesByCustomerID)
-		api.POST("/cases", controllers.CreateCase)
+		// Protected routes
+		protected := api.Group("", middleware.AuthRequired())
+		{
+			// Customer routes
+			protected.GET("/customers", controllers.GetCustomers)
+			protected.POST("/customers", controllers.CreateCustomer)
+			protected.GET("/customers/:id", controllers.GetCustomerByID)
+			protected.PUT("/customers/:id", controllers.UpdateCustomer)
+			protected.DELETE("/customers/:id", controllers.DeleteCustomer)
+			protected.GET("/customer-cases/:customerId", controllers.GetCasesByCustomerID)
 
-		// Case routes
-		api.GET("/cases", controllers.GetCases)
-		api.GET("/cases/:id", controllers.GetCaseByID)
-		api.PUT("/cases/:id", controllers.UpdateCase)
-		api.DELETE("/cases/:id", controllers.DeleteCase)
+			// Case routes
+			protected.POST("/cases", controllers.CreateCase)
+			protected.GET("/cases", controllers.GetCases)
+			protected.GET("/cases/:id", controllers.GetCaseByID)
+			protected.PUT("/cases/:id", controllers.UpdateCase)
+			protected.DELETE("/cases/:id", controllers.DeleteCase)
 
-		api.GET("/company-information", controllers.GetCompanyInformation)
-		api.POST("/company-information", controllers.CreateCompanyInformation)
-		api.PUT("/company-information", controllers.UpdateCompanyInformation)
+			// Recently viewed routes
+			protected.POST("/recently-viewed/customers/:id", controllers.LogRecentlyViewedCustomer)
+			protected.POST("/recently-viewed/cases/:id", controllers.LogRecentlyViewedCase)
 
-		api.GET("/users", controllers.GetUsers)
-		api.GET("/users/:id", controllers.GetUserByID)
-		api.PUT("/users/:id", controllers.UpdateUser)
+			// Company information routes
+			protected.GET("/company-information", controllers.GetCompanyInformation)
+			protected.POST("/company-information", controllers.CreateCompanyInformation)
+			protected.PUT("/company-information", controllers.UpdateCompanyInformation)
+
+			// User routes
+			protected.GET("/users", controllers.GetUsers)
+			protected.GET("/users/:id", controllers.GetUserByID)
+			protected.PUT("/users/:id", controllers.UpdateUser)
+		}
 	}
 }

@@ -88,6 +88,8 @@ export default function CustomerRecord() {
       setLoading(true);
       const response = await api.get<CustomerResponse>(`/api/customers/${id}`);
       setCustomer(response.data.data);
+      // Log this customer as recently viewed (fire and forget)
+      api.post(`/api/recently-viewed/customers/${id}`).catch(() => {});
     } catch (err: any) {
       messageApi.error(err?.response?.data?.error ?? "Error fetching customer");
     } finally {

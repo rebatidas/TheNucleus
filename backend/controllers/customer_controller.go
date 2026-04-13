@@ -3,6 +3,7 @@ package controllers
 import (
 	"log"
 	"net/http"
+	"time"
 
 	"thenucleus-backend/config"
 	"thenucleus-backend/models"
@@ -21,6 +22,10 @@ func CreateCustomer(c *gin.Context) {
 		return
 	}
 
+	if userID, exists := c.Get("user_id"); exists {
+		input.CreatedBy = userID.(uint)
+	}
+
 	result := config.DB.Create(&input)
 	if result.Error != nil {
 		log.Println("Create error:", result.Error)
@@ -37,20 +42,69 @@ func CreateCustomer(c *gin.Context) {
 }
 
 func GetCustomers(c *gin.Context) {
-	var customers []models.Customer
+	view := c.DefaultQuery("view", "all_customers")
+	userID, userIDExists := c.Get("user_id")
 
-	result := config.DB.Find(&customers)
-	if result.Error != nil {
-		log.Println("Fetch customers error:", result.Error)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": result.Error.Error(),
-		})
-		return
+	switch view {
+	case "my_customers":
+		if !userIDExists {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication required"})
+			return
+		}
+		var customers []models.Customer
+		if err := config.DB.Where("created_by = ?", userID).Find(&customers).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"data": customers})
+
+	case "recently_viewed":
+		if !userIDExists {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication required"})
+			return
+		}
+		thirtyDaysAgo := time.Now().AddDate(0, 0, -30)
+		var recentEntries []models.RecentlyViewed
+		config.DB.
+			Where("user_id = ? AND record_type = ? AND viewed_at > ?", userID, "customer", thirtyDaysAgo).
+			Order("viewed_at desc").
+			Find(&recentEntries)
+
+		if len(recentEntries) == 0 {
+			c.JSON(http.StatusOK, gin.H{"data": []models.Customer{}})
+			return
+		}
+
+		recordIDs := make([]uint, len(recentEntries))
+		for i, entry := range recentEntries {
+			recordIDs[i] = entry.RecordID
+		}
+
+		var customers []models.Customer
+		config.DB.Where("id IN ?", recordIDs).Find(&customers)
+
+		// Preserve recently-viewed order
+		customerMap := make(map[uint]models.Customer)
+		for _, cust := range customers {
+			customerMap[cust.ID] = cust
+		}
+		ordered := make([]models.Customer, 0, len(recordIDs))
+		for _, id := range recordIDs {
+			if cust, ok := customerMap[id]; ok {
+				ordered = append(ordered, cust)
+			}
+		}
+		c.JSON(http.StatusOK, gin.H{"data": ordered})
+
+	default: // "all_customers" or anything else
+		var customers []models.Customer
+		if err := config.DB.Find(&customers).Error; err != nil {
+			log.Println("Fetch customers error:", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"data": customers})
 	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"data": customers,
-	})
 }
 
 func GetCustomerByID(c *gin.Context) {

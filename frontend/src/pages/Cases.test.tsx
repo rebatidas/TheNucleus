@@ -40,62 +40,58 @@ vi.mock("../api/client", () => ({
   },
 }));
 
+const caseFixture = {
+  id: 1,
+  case_number: "CASE-1001",
+  status: "New",
+  subject: "Printer issue",
+  description: "Printer not working",
+  resolution: "",
+  customer_id: 10,
+  customer: {
+    ID: 10,
+    salutation: "Mr.",
+    first_name: "John",
+    middle_name: "",
+    last_name: "Doe",
+    email: "john@test.com",
+    phone: "1234567890",
+  },
+  created_date: "2026-03-25T00:00:00Z",
+  last_modified_date: "2026-03-25T00:00:00Z",
+};
+
+const customerFixture = {
+  ID: 10,
+  salutation: "Mr.",
+  first_name: "John",
+  middle_name: "",
+  last_name: "Doe",
+  email: "john@test.com",
+  phone: "1234567890",
+};
+
+function mockGetForView(cases: object[]) {
+  vi.mocked(api.get).mockImplementation((url: string) => {
+    if (url.startsWith("/api/cases")) {
+      return Promise.resolve({ data: { data: cases } } as any);
+    }
+    if (url.startsWith("/api/customers")) {
+      return Promise.resolve({
+        data: { data: [customerFixture] },
+      } as any);
+    }
+    return Promise.reject(new Error(`Unhandled GET url: ${url}`));
+  });
+}
+
 describe("Cases", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   it("renders cases list from API", async () => {
-    vi.mocked(api.get).mockImplementation((url: string) => {
-      if (url === "/api/cases") {
-        return Promise.resolve({
-          data: {
-            data: [
-              {
-                id: 1,
-                case_number: "CASE-1001",
-                status: "New",
-                subject: "Printer issue",
-                description: "Printer not working",
-                resolution: "",
-                customer_id: 10,
-                customer: {
-                  ID: 10,
-                  salutation: "Mr.",
-                  first_name: "John",
-                  middle_name: "",
-                  last_name: "Doe",
-                  email: "john@test.com",
-                  phone: "1234567890",
-                },
-                created_date: "2026-03-25T00:00:00Z",
-                last_modified_date: "2026-03-25T00:00:00Z",
-              },
-            ],
-          },
-        } as any);
-      }
-
-      if (url === "/api/customers") {
-        return Promise.resolve({
-          data: {
-            data: [
-              {
-                ID: 10,
-                salutation: "Mr.",
-                first_name: "John",
-                middle_name: "",
-                last_name: "Doe",
-                email: "john@test.com",
-                phone: "1234567890",
-              },
-            ],
-          },
-        } as any);
-      }
-
-      return Promise.reject(new Error(`Unhandled GET url: ${url}`));
-    });
+    mockGetForView([caseFixture]);
 
     render(
       <MemoryRouter>
@@ -108,36 +104,88 @@ describe("Cases", () => {
     expect(screen.getByText("Mr. John Doe")).toBeInTheDocument();
   });
 
-  it("creates a new case and navigates to the case record page", async () => {
-    vi.mocked(api.get).mockImplementation((url: string) => {
-      if (url === "/api/cases") {
-        return Promise.resolve({
-          data: {
-            data: [],
-          },
-        } as any);
-      }
+  it("defaults to All Cases view", async () => {
+    mockGetForView([]);
 
-      if (url === "/api/customers") {
-        return Promise.resolve({
-          data: {
-            data: [
-              {
-                ID: 10,
-                salutation: "Mr.",
-                first_name: "John",
-                middle_name: "",
-                last_name: "Doe",
-                email: "john@test.com",
-                phone: "1234567890",
-              },
-            ],
-          },
-        } as any);
-      }
+    render(
+      <MemoryRouter>
+        <Cases />
+      </MemoryRouter>
+    );
 
-      return Promise.reject(new Error(`Unhandled GET url: ${url}`));
+    await waitFor(() => {
+      expect(api.get).toHaveBeenCalledWith(
+        expect.stringContaining("view=all_cases")
+      );
     });
+  });
+
+  it("fetches with my_cases view when My Cases is selected", async () => {
+    mockGetForView([caseFixture]);
+
+    render(
+      <MemoryRouter>
+        <Cases />
+      </MemoryRouter>
+    );
+
+    await screen.findByText("CASE-1001");
+
+    mockGetForView([]);
+
+    const select = document.querySelector(".ant-select-selector")!;
+    fireEvent.mouseDown(select);
+
+    const myOption = await screen.findByText("My Cases");
+    fireEvent.click(myOption);
+
+    await waitFor(() => {
+      expect(api.get).toHaveBeenCalledWith(
+        expect.stringContaining("view=my_cases")
+      );
+    });
+  });
+
+  it("fetches with recently_viewed when Recently Viewed is selected", async () => {
+    mockGetForView([caseFixture]);
+
+    render(
+      <MemoryRouter>
+        <Cases />
+      </MemoryRouter>
+    );
+
+    await screen.findByText("CASE-1001");
+
+    mockGetForView([]);
+
+    const select = document.querySelector(".ant-select-selector")!;
+    fireEvent.mouseDown(select);
+
+    const recentOption = await screen.findByText("Recently Viewed");
+    fireEvent.click(recentOption);
+
+    await waitFor(() => {
+      expect(api.get).toHaveBeenCalledWith(
+        expect.stringContaining("view=recently_viewed")
+      );
+    });
+  });
+
+  it("shows empty state when no cases are returned", async () => {
+    mockGetForView([]);
+
+    render(
+      <MemoryRouter>
+        <Cases />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText("No cases found")).toBeInTheDocument();
+  });
+
+  it("creates a new case and navigates to the case record page", async () => {
+    mockGetForView([]);
 
     vi.mocked(api.post).mockResolvedValue({
       data: {
