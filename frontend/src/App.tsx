@@ -9,6 +9,11 @@ import Cases from "./pages/Cases";
 import CaseRecord from "./pages/CaseRecord";
 import Profile from "./pages/Profile";
 import Setup from "./pages/Setup";
+import { setAuthToken } from "./api/client";
+
+// Restore auth token from localStorage on page load
+const savedToken = localStorage.getItem("token");
+if (savedToken) setAuthToken(savedToken);
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const token = localStorage.getItem("token");

@@ -12,4 +12,5 @@ type Customer struct {
 	Phone           string `json:"phone" binding:"required"`
 	ShippingAddress string `json:"shipping_address"`
 	BillingAddress  string `json:"billing_address"`
+	CreatedBy       uint   `json:"created_by"`
 }

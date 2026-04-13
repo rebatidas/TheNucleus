@@ -40,6 +40,18 @@ vi.mock("../api/client", () => ({
   },
 }));
 
+const customerFixture = {
+  ID: 1,
+  salutation: "Mr.",
+  first_name: "John",
+  middle_name: "",
+  last_name: "Doe",
+  email: "john@test.com",
+  phone: "1234567890",
+  shipping_address: "Ship address",
+  billing_address: "Bill address",
+};
+
 describe("Customers", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -139,5 +151,89 @@ describe("Customers", () => {
     });
 
     expect(mockNavigate).toHaveBeenCalledWith("/customers/101");
+  });
+
+  it("defaults to All Customers view", async () => {
+    vi.mocked(api.get).mockResolvedValue({ data: { data: [] } } as any);
+
+    render(
+      <MemoryRouter>
+        <Customers />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(api.get).toHaveBeenCalledWith(
+        expect.stringContaining("view=all_customers")
+      );
+    });
+  });
+
+  it("fetches with my_customers view when My Customers is selected", async () => {
+    vi.mocked(api.get).mockResolvedValue({
+      data: { data: [customerFixture] },
+    } as any);
+
+    render(
+      <MemoryRouter>
+        <Customers />
+      </MemoryRouter>
+    );
+
+    await screen.findByText("Mr. John Doe");
+
+    vi.mocked(api.get).mockResolvedValue({ data: { data: [] } } as any);
+
+    const select = document.querySelector(".ant-select-selector")!;
+    fireEvent.mouseDown(select);
+
+    const myOption = await screen.findByText("My Customers");
+    fireEvent.click(myOption);
+
+    await waitFor(() => {
+      expect(api.get).toHaveBeenCalledWith(
+        expect.stringContaining("view=my_customers")
+      );
+    });
+  });
+
+  it("fetches with recently_viewed when Recently Viewed is selected", async () => {
+    vi.mocked(api.get).mockResolvedValue({
+      data: { data: [customerFixture] },
+    } as any);
+
+    render(
+      <MemoryRouter>
+        <Customers />
+      </MemoryRouter>
+    );
+
+    await screen.findByText("Mr. John Doe");
+
+    vi.mocked(api.get).mockResolvedValue({ data: { data: [] } } as any);
+
+    const select = document.querySelector(".ant-select-selector")!;
+    fireEvent.mouseDown(select);
+
+    const recentOption = await screen.findByText("Recently Viewed");
+    fireEvent.click(recentOption);
+
+    await waitFor(() => {
+      expect(api.get).toHaveBeenCalledWith(
+        expect.stringContaining("view=recently_viewed")
+      );
+    });
+  });
+
+  it("shows empty state when no customers are returned", async () => {
+    vi.mocked(api.get).mockResolvedValue({ data: { data: [] } } as any);
+
+    render(
+      <MemoryRouter>
+        <Customers />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText("No customers found")).toBeInTheDocument();
   });
 });

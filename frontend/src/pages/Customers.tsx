@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   Button,
+  Empty,
   Form,
   Input,
   message,
@@ -41,20 +42,34 @@ type FormValues = {
   billing_address?: string;
 };
 
+const LIST_VIEW_OPTIONS = [
+  { label: "All Customers", value: "all_customers" },
+  { label: "My Customers", value: "my_customers" },
+  { label: "Recently Viewed", value: "recently_viewed" },
+];
+
+const EMPTY_STATE_TEXT: Record<string, string> = {
+  all_customers: "No customers found",
+  my_customers: "You haven't created any customers yet",
+  recently_viewed: "No recently viewed customers in the last 30 days",
+};
+
 export default function Customers() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(false);
-  const [selectedListView, setSelectedListView] = useState("All");
+  const [selectedListView, setSelectedListView] = useState("all_customers");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [form] = Form.useForm<FormValues>();
   const [messageApi, contextHolder] = message.useMessage();
   const navigate = useNavigate();
 
-  const fetchCustomers = async () => {
+  const fetchCustomers = async (view: string = "all_customers") => {
     try {
       setLoading(true);
-      const response = await api.get<CustomerListResponse>("/api/customers");
+      const response = await api.get<CustomerListResponse>(
+        `/api/customers?view=${view}`
+      );
       setCustomers(response.data.data || []);
     } catch (err: any) {
       message.error(err?.response?.data?.error ?? "Error fetching customers");
@@ -64,8 +79,13 @@ export default function Customers() {
   };
 
   useEffect(() => {
-    fetchCustomers();
+    fetchCustomers("all_customers");
   }, []);
+
+  const handleListViewChange = (value: string) => {
+    setSelectedListView(value);
+    fetchCustomers(value);
+  };
 
   const openModal = () => {
     form.resetFields();
@@ -78,28 +98,28 @@ export default function Customers() {
   };
 
   const handleSubmit = async (values: FormValues) => {
-  try {
-    setIsSaving(true);
+    try {
+      setIsSaving(true);
 
-    const response = await api.post("/api/customers", values);
-    const createdCustomer = response.data?.data;
+      const response = await api.post("/api/customers", values);
+      const createdCustomer = response.data?.data;
 
-    closeModal();
-    messageApi.success("Customer created successfully");
+      closeModal();
+      messageApi.success("Customer created successfully");
 
-    if (createdCustomer?.ID) {
-      navigate(`/customers/${createdCustomer.ID}`);
+      if (createdCustomer?.ID) {
+        navigate(`/customers/${createdCustomer.ID}`);
+      }
+    } catch (err: any) {
+      messageApi.error(
+        err?.response?.data?.message ??
+          err?.response?.data?.error ??
+          "Error creating customer"
+      );
+    } finally {
+      setIsSaving(false);
     }
-  } catch (err: any) {
-    messageApi.error(
-      err?.response?.data?.message ??
-        err?.response?.data?.error ??
-        "Error creating customer"
-    );
-  } finally {
-    setIsSaving(false);
-  }
-};
+  };
 
   const columns: ColumnsType<Customer> = [
     {
@@ -151,13 +171,9 @@ export default function Customers() {
         <div style={{ marginBottom: 16 }}>
           <Select
             value={selectedListView}
-            onChange={setSelectedListView}
+            onChange={handleListViewChange}
             style={{ width: 220 }}
-            options={[
-              { label: "All", value: "All" },
-              { label: "My Customers", value: "My Customers" },
-              { label: "All Customers", value: "All Customers" },
-            ]}
+            options={LIST_VIEW_OPTIONS}
           />
         </div>
 
@@ -167,6 +183,16 @@ export default function Customers() {
           dataSource={customers}
           loading={loading}
           pagination={{ pageSize: 10 }}
+          locale={{
+            emptyText: (
+              <Empty
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                description={
+                  EMPTY_STATE_TEXT[selectedListView] ?? "No records found"
+                }
+              />
+            ),
+          }}
         />
 
         <Modal

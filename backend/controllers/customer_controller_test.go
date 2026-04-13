@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"thenucleus-backend/config"
 	"thenucleus-backend/models"
@@ -118,5 +119,112 @@ func TestGetCustomerByIDSuccess(t *testing.T) {
 
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected status %d, got %d, body: %s", http.StatusOK, w.Code, w.Body.String())
+	}
+}
+
+func TestGetCustomersMyCustomers(t *testing.T) {
+	setupCRMTestDB(t)
+	router := setupCRMRouterWithUser(1)
+
+	// created_by=1 — should appear
+	mine := models.Customer{
+		FirstName: "Mine",
+		LastName:  "Owner",
+		Email:     "mine@example.com",
+		Phone:     "1111111111",
+		CreatedBy: 1,
+	}
+	// created_by=2 — should not appear
+	other := models.Customer{
+		FirstName: "Other",
+		LastName:  "Person",
+		Email:     "other@example.com",
+		Phone:     "2222222222",
+		CreatedBy: 2,
+	}
+
+	if err := config.DB.Create(&mine).Error; err != nil {
+		t.Fatalf("failed to seed mine customer: %v", err)
+	}
+	if err := config.DB.Create(&other).Error; err != nil {
+		t.Fatalf("failed to seed other customer: %v", err)
+	}
+
+	req, _ := http.NewRequest(http.MethodGet, "/api/customers?view=my_customers", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+	}
+
+	var response map[string]interface{}
+	if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
+		t.Fatalf("failed to parse response: %v", err)
+	}
+
+	data := response["data"].([]interface{})
+	if len(data) != 1 {
+		t.Fatalf("expected 1 customer for my_customers, got %d", len(data))
+	}
+
+	first := data[0].(map[string]interface{})
+	if first["first_name"] != "Mine" {
+		t.Fatalf("expected customer 'Mine', got %v", first["first_name"])
+	}
+}
+
+func TestGetCustomersRecentlyViewed(t *testing.T) {
+	setupCRMTestDB(t)
+	router := setupCRMRouterWithUser(1)
+
+	viewed := models.Customer{
+		FirstName: "Viewed",
+		LastName:  "Recently",
+		Email:     "viewed@example.com",
+		Phone:     "3333333333",
+	}
+	notViewed := models.Customer{
+		FirstName: "Not",
+		LastName:  "Viewed",
+		Email:     "notviewed@example.com",
+		Phone:     "4444444444",
+	}
+
+	if err := config.DB.Create(&viewed).Error; err != nil {
+		t.Fatalf("failed to seed viewed customer: %v", err)
+	}
+	if err := config.DB.Create(&notViewed).Error; err != nil {
+		t.Fatalf("failed to seed not-viewed customer: %v", err)
+	}
+
+	config.DB.Create(&models.RecentlyViewed{
+		UserID:     1,
+		RecordType: "customer",
+		RecordID:   viewed.ID,
+		ViewedAt:   time.Now(),
+	})
+
+	req, _ := http.NewRequest(http.MethodGet, "/api/customers?view=recently_viewed", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+	}
+
+	var response map[string]interface{}
+	if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
+		t.Fatalf("failed to parse response: %v", err)
+	}
+
+	data := response["data"].([]interface{})
+	if len(data) != 1 {
+		t.Fatalf("expected 1 recently viewed customer, got %d", len(data))
+	}
+
+	first := data[0].(map[string]interface{})
+	if first["first_name"] != "Viewed" {
+		t.Fatalf("expected customer 'Viewed', got %v", first["first_name"])
 	}
 }
