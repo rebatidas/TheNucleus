@@ -64,6 +64,7 @@ func UpdateUser(c *gin.Context) {
 	user.LastName = input.LastName
 	user.Username = input.Username
 	user.Email = input.Email
+	user.RoleID = input.RoleID
 	user.Name = strings.TrimSpace(input.FirstName + " " + input.LastName)
 
 	if user.Name == "" {

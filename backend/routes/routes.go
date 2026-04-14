@@ -35,5 +35,10 @@ func SetupRoutes(r *gin.Engine) {
 		api.GET("/users", controllers.GetUsers)
 		api.GET("/users/:id", controllers.GetUserByID)
 		api.PUT("/users/:id", controllers.UpdateUser)
+
+		api.GET("/roles", controllers.GetRoles)
+		api.GET("/roles/:id", controllers.GetRoleByID)
+		api.POST("/roles", controllers.CreateRole)
+		api.PUT("/roles/:id", controllers.UpdateRole)
 	}
 }
