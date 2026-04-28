@@ -1,165 +1,378 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { setAuthToken, api } from "../api/client";
-import "antd/dist/reset.css";
-import { Table, Spin, Empty, Alert } from "antd";
+import { Link } from "react-router-dom";
+import { Card, Col, Empty, Row, Spin, Tag, Typography } from "antd";
+import {
+  Cell,
+  Legend,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+} from "recharts";
 import AppLayout from "../components/AppLayout";
+import { api } from "../api/client";
 
-interface CaseItem {
+const { Text, Title } = Typography;
+
+type Customer = {
+  ID: number;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string;
+};
+
+type CaseRecord = {
   id: number;
-  title: string;
+  case_number: string;
   status: string;
-  created_at?: string;
+  subject: string;
+  customer_id: number;
+  customer?: Customer;
+  created_date: string;
+};
+
+const STATUS_COLORS: Record<string, string> = {
+  New: "#fa8c16",
+  "In Progress": "#1677ff",
+  Closed: "#52c41a",
+};
+
+const STATUS_TAG_COLORS: Record<string, string> = {
+  New: "orange",
+  "In Progress": "blue",
+  Closed: "green",
+};
+
+function statusTag(status: string) {
+  return (
+    <Tag color={STATUS_TAG_COLORS[status] ?? "default"} style={{ margin: 0 }}>
+      {status}
+    </Tag>
+  );
 }
 
-const mockCases: CaseItem[] = [
-  { id: 1, title: "Website outage - client A", status: "open", created_at: new Date().toISOString() },
-  { id: 2, title: "Billing discrepancy - client B", status: "in_progress", created_at: new Date(Date.now() - 86400000).toISOString() },
-  { id: 3, title: "Feature request: export CSV", status: "closed", created_at: new Date(Date.now() - 3 * 86400000).toISOString() },
-  { id: 4, title: "Data sync failed - nightly job", status: "open", created_at: new Date(Date.now() - 6 * 3600000).toISOString() },
-];
+function sliceColor(status: string) {
+  return STATUS_COLORS[status] ?? "#8c8c8c";
+}
 
 export default function Dashboard() {
-  const navigate = useNavigate();
-  const [cases, setCases] = useState<CaseItem[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [myCases, setMyCases] = useState<CaseRecord[]>([]);
+  const [casesLoading, setCasesLoading] = useState(true);
+  const [selectedStage, setSelectedStage] = useState<string | null>(null);
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    setAuthToken(null);
-    navigate("/login");
-  };
+  const [recentCases, setRecentCases] = useState<CaseRecord[]>([]);
+  const [recentCasesLoading, setRecentCasesLoading] = useState(true);
+
+  const [recentCustomers, setRecentCustomers] = useState<Customer[]>([]);
+  const [recentCustomersLoading, setRecentCustomersLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      // no auth token — show mock data in dev/local scenarios
-      setCases(mockCases);
-      return;
-    }
-    setAuthToken(token);
-    setLoading(true);
     api
-      .get("/api/cases")
-      .then((res) => {
-        const data = res.data?.data?.cases ?? [];
-        setCases(data);
-      })
-      .catch((err) => {
-        // fallback to mock data so dashboard remains usable offline
-        setCases(mockCases);
-        setError(null);
-      })
-      .finally(() => setLoading(false));
+      .get("/api/cases?view=my_cases")
+      .then((res) => setMyCases(res.data?.data ?? []))
+      .catch(() => setMyCases([]))
+      .finally(() => setCasesLoading(false));
+
+    api
+      .get("/api/recently-viewed/cases")
+      .then((res) => setRecentCases(res.data?.data ?? []))
+      .catch(() => setRecentCases([]))
+      .finally(() => setRecentCasesLoading(false));
+
+    api
+      .get("/api/recently-viewed/customers")
+      .then((res) => setRecentCustomers(res.data?.data ?? []))
+      .catch(() => setRecentCustomers([]))
+      .finally(() => setRecentCustomersLoading(false));
   }, []);
 
-  const columns = [
-    { title: "Title", dataIndex: "title", key: "title" },
-    { title: "Status", dataIndex: "status", key: "status" },
-    {
-      title: "Created",
-      dataIndex: "created_at",
-      key: "created_at",
-      render: (val: string) => (val ? new Date(val).toLocaleString() : "-"),
-    },
-  ];
+  const stageMap = myCases.reduce<Record<string, number>>((acc, c) => {
+    acc[c.status] = (acc[c.status] ?? 0) + 1;
+    return acc;
+  }, {});
+
+  const pieData = Object.entries(stageMap).map(([name, value]) => ({
+    name,
+    value,
+  }));
+
+  const stagedCases = selectedStage
+    ? myCases.filter((c) => c.status === selectedStage)
+    : [];
+
+  function handleSliceClick(entry: { name: string }) {
+    setSelectedStage((prev) => (prev === entry.name ? null : entry.name));
+  }
 
   return (
-    <AppLayout title="My Cases">
-      {loading ? (
-        <Spin tip="Loading cases..." />
-      ) : error ? (
-        <Alert type="error" message={error} />
-      ) : cases.length === 0 ? (
-        <Empty description="No cases found" />
-      ) : (
-        <Table rowKey={(r: any) => r.id} dataSource={cases} columns={columns} />
-      )}
+    <AppLayout title="Dashboard">
+      <div style={{ paddingBottom: 32 }}>
+        {/* ── Cases by Stage ── */}
+        <Title level={4} style={sectionTitle}>
+          Cases by Stage
+        </Title>
+        <Card style={cardStyle}>
+          {casesLoading ? (
+            <div style={centeredStyle}>
+              <Spin tip="Loading cases..." />
+            </div>
+          ) : myCases.length === 0 ? (
+            <Empty description="No cases assigned to you" />
+          ) : (
+            <Row gutter={32} align="middle">
+              <Col xs={24} md={selectedStage ? 12 : 24}>
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={pieData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={110}
+                      paddingAngle={3}
+                      dataKey="value"
+                      onClick={handleSliceClick}
+                      style={{ cursor: "pointer" }}
+                    >
+                      {pieData.map((entry) => (
+                        <Cell
+                          key={entry.name}
+                          fill={sliceColor(entry.name)}
+                          opacity={
+                            selectedStage && selectedStage !== entry.name
+                              ? 0.35
+                              : 1
+                          }
+                          stroke={
+                            selectedStage === entry.name ? "#032d60" : "none"
+                          }
+                          strokeWidth={selectedStage === entry.name ? 2 : 0}
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      formatter={(value: number, name: string) => [
+                        `${value} case${value !== 1 ? "s" : ""}`,
+                        name,
+                      ]}
+                    />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+                <Text
+                  type="secondary"
+                  style={{ display: "block", textAlign: "center", fontSize: 12 }}
+                >
+                  Click a slice to view cases in that stage
+                </Text>
+              </Col>
+
+              {selectedStage && (
+                <Col xs={24} md={12}>
+                  <div style={stageListHeader}>
+                    <Text strong style={{ color: "#032d60", fontSize: 15 }}>
+                      {selectedStage}{" "}
+                      <span style={{ color: "#888", fontWeight: 400 }}>
+                        ({stagedCases.length})
+                      </span>
+                    </Text>
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setSelectedStage(null)}
+                      onKeyDown={(e) =>
+                        e.key === "Enter" && setSelectedStage(null)
+                      }
+                      style={clearButtonStyle}
+                    >
+                      Clear
+                    </span>
+                  </div>
+                  <div style={{ maxHeight: 260, overflowY: "auto" }}>
+                    {stagedCases.map((c) => (
+                      <Link
+                        to={`/cases/${c.id}`}
+                        key={c.id}
+                        style={{ textDecoration: "none" }}
+                      >
+                        <div style={caseRowStyle}>
+                          <div style={caseRowTopStyle}>
+                            <Text
+                              style={{
+                                fontWeight: 600,
+                                color: "#0176d3",
+                                fontSize: 13,
+                              }}
+                            >
+                              {c.case_number}
+                            </Text>
+                            {statusTag(c.status)}
+                          </div>
+                          <Text style={{ color: "#444", fontSize: 13 }}>
+                            {c.subject}
+                          </Text>
+                          {c.customer && (
+                            <Text
+                              style={{
+                                color: "#888",
+                                fontSize: 12,
+                                display: "block",
+                                marginTop: 2,
+                              }}
+                            >
+                              {c.customer.first_name} {c.customer.last_name}
+                            </Text>
+                          )}
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </Col>
+              )}
+            </Row>
+          )}
+        </Card>
+
+        {/* ── Recently Viewed ── */}
+        <Row gutter={24} style={{ marginTop: 8 }}>
+          <Col xs={24} md={12}>
+            <Title level={4} style={sectionTitle}>
+              Recently Viewed Cases
+            </Title>
+            <Card style={{ ...cardStyle, minHeight: 180 }}>
+              {recentCasesLoading ? (
+                <div style={centeredStyle}>
+                  <Spin />
+                </div>
+              ) : recentCases.length === 0 ? (
+                <Empty description="No recently viewed cases" />
+              ) : (
+                recentCases.map((c) => (
+                  <Link
+                    to={`/cases/${c.id}`}
+                    key={c.id}
+                    style={{ textDecoration: "none" }}
+                  >
+                    <div style={recentRowStyle}>
+                      <div style={caseRowTopStyle}>
+                        <Text
+                          style={{
+                            fontWeight: 600,
+                            color: "#0176d3",
+                            fontSize: 13,
+                          }}
+                        >
+                          {c.case_number}
+                        </Text>
+                        {statusTag(c.status)}
+                      </div>
+                      <Text style={{ color: "#555", fontSize: 13 }}>
+                        {c.subject}
+                      </Text>
+                    </div>
+                  </Link>
+                ))
+              )}
+            </Card>
+          </Col>
+
+          <Col xs={24} md={12}>
+            <Title level={4} style={sectionTitle}>
+              Recently Viewed Customers
+            </Title>
+            <Card style={{ ...cardStyle, minHeight: 180 }}>
+              {recentCustomersLoading ? (
+                <div style={centeredStyle}>
+                  <Spin />
+                </div>
+              ) : recentCustomers.length === 0 ? (
+                <Empty description="No recently viewed customers" />
+              ) : (
+                recentCustomers.map((cust) => (
+                  <Link
+                    to={`/customers/${cust.ID}`}
+                    key={cust.ID}
+                    style={{ textDecoration: "none" }}
+                  >
+                    <div style={recentRowStyle}>
+                      <Text
+                        style={{
+                          fontWeight: 600,
+                          color: "#0176d3",
+                          fontSize: 14,
+                          display: "block",
+                        }}
+                      >
+                        {cust.first_name} {cust.last_name}
+                      </Text>
+                      <Text style={{ color: "#888", fontSize: 12 }}>
+                        {cust.email}
+                      </Text>
+                    </div>
+                  </Link>
+                ))
+              )}
+            </Card>
+          </Col>
+        </Row>
+      </div>
     </AppLayout>
   );
 }
 
-const styles = {
-  appContainer: {
-    height: "100%",
-    width: "100%",
-    display: "flex",
-    flexDirection: "column" as const,
-    fontFamily: "Inter, system-ui, sans-serif",
-  },
+const sectionTitle: React.CSSProperties = {
+  color: "#032d60",
+  marginBottom: 12,
+  marginTop: 0,
+};
 
-  header: {
-    height: "60px",
-    backgroundColor: "#032d60",
-    color: "white",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: "0 30px",
-    fontWeight: 600,
-    fontSize: "18px",
-  },
+const cardStyle: React.CSSProperties = {
+  borderRadius: 10,
+  marginBottom: 24,
+  boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+};
 
-  logo: {
-    fontSize: "20px",
-    letterSpacing: "0.5px",
-  },
+const centeredStyle: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "center",
+  padding: "24px 0",
+};
 
-  logoutBtn: {
-    backgroundColor: "#0176d3",
-    border: "none",
-    padding: "8px 16px",
-    borderRadius: "6px",
-    color: "white",
-    cursor: "pointer",
-  },
+const stageListHeader: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  marginBottom: 12,
+};
 
-  bodyContainer: {
-    flex: 1,
-    display: "flex",
-    backgroundColor: "#f3f6f9",
-  },
+const clearButtonStyle: React.CSSProperties = {
+  cursor: "pointer",
+  color: "#0176d3",
+  fontSize: 13,
+};
 
-  sidebar: {
-    width: "220px",
-    backgroundColor: "#ffffff",
-    borderRight: "1px solid #e0e5ee",
-    padding: "20px 0",
-  },
+const caseRowTopStyle: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  marginBottom: 4,
+};
 
-  sidebarItem: {
-    padding: "14px 25px",
-    cursor: "pointer",
-    fontSize: "14px",
-    color: "#032d60",
-  },
+const caseRowStyle: React.CSSProperties = {
+  padding: "10px 12px",
+  borderRadius: 8,
+  marginBottom: 8,
+  backgroundColor: "#f8fafc",
+  border: "1px solid #e8ecf0",
+  cursor: "pointer",
+};
 
-  mainContent: {
-    flex: 1,
-    padding: "40px 60px",
-    width: "100%",
-    boxSizing: "border-box" as const,
-  },
-
-  welcomeTitle: {
-    fontSize: "42px",
-    fontWeight: 700,
-    marginBottom: "15px",
-    color: "#032d60",
-  },
-
-  subtitle: {
-    fontSize: "18px",
-    color: "#5f6c80",
-    marginBottom: "40px",
-  },
-
-  infoBox: {
-    backgroundColor: "#ffffff",
-    padding: "25px",
-    borderRadius: "10px",
-    boxShadow: "0 2px 6px rgba(0,0,0,0.05)",
-    maxWidth: "500px",
-  },
-} as const;
+const recentRowStyle: React.CSSProperties = {
+  padding: "10px 14px",
+  borderRadius: 8,
+  marginBottom: 8,
+  backgroundColor: "#f8fafc",
+  border: "1px solid #e8ecf0",
+  cursor: "pointer",
+};

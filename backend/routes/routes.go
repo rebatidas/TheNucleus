@@ -35,6 +35,8 @@ func SetupRoutes(r *gin.Engine) {
 			// Recently viewed routes
 			protected.POST("/recently-viewed/customers/:id", controllers.LogRecentlyViewedCustomer)
 			protected.POST("/recently-viewed/cases/:id", controllers.LogRecentlyViewedCase)
+			protected.GET("/recently-viewed/cases", controllers.GetRecentlyViewedCases)
+			protected.GET("/recently-viewed/customers", controllers.GetRecentlyViewedCustomers)
 
 			// Company information routes
 			protected.GET("/company-information", controllers.GetCompanyInformation)
