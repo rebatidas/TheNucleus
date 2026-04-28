@@ -45,6 +45,12 @@ func SetupRoutes(r *gin.Engine) {
 			protected.GET("/users", controllers.GetUsers)
 			protected.GET("/users/:id", controllers.GetUserByID)
 			protected.PUT("/users/:id", controllers.UpdateUser)
+
+			// Role routes
+			protected.GET("/roles", controllers.GetRoles)
+			protected.GET("/roles/:id", controllers.GetRoleByID)
+			protected.POST("/roles", controllers.CreateRole)
+			protected.PUT("/roles/:id", controllers.UpdateRole)
 		}
 	}
 }

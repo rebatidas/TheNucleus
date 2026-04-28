@@ -13,6 +13,7 @@ import {
   Form,
   message,
   Space,
+  Select,
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import type { MenuProps } from "antd";
@@ -26,6 +27,7 @@ import {
 } from "@ant-design/icons";
 import { Navigate, useNavigate } from "react-router-dom";
 import { api } from "../api/client";
+import SetupRolesSection from "../components/SetupRolesSection";
 
 const { Title, Text } = Typography;
 
@@ -39,6 +41,14 @@ type UserRecord = {
   name?: string;
   email: string;
   created_at?: string;
+  role_id?: number | null;
+};
+
+type RoleRecord = {
+  ID: number;
+  label: string;
+  role_name: string;
+  reports_to_id?: number | null;
 };
 
 type CompanyInformation = {
@@ -58,6 +68,7 @@ type UserFormValues = {
   last_name?: string;
   username?: string;
   email: string;
+  role_id?: number | null;
 };
 
 export default function Setup() {
@@ -71,7 +82,12 @@ export default function Setup() {
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [isUserSaving, setIsUserSaving] = useState(false);
 
-  const [companyInfo, setCompanyInfo] = useState<CompanyInformation | null>(null);
+  const [roles, setRoles] = useState<RoleRecord[]>([]);
+  const [rolesLoading, setRolesLoading] = useState(false);
+
+  const [companyInfo, setCompanyInfo] = useState<CompanyInformation | null>(
+    null
+  );
   const [companyLoading, setCompanyLoading] = useState(false);
   const [companyError, setCompanyError] = useState<string | null>(null);
   const [companySaving, setCompanySaving] = useState(false);
@@ -131,7 +147,9 @@ export default function Setup() {
 
   const filteredItems =
     items?.filter((item) =>
-      String(item?.label ?? "").toLowerCase().includes(searchText.toLowerCase())
+      String(item?.label ?? "")
+        .toLowerCase()
+        .includes(searchText.toLowerCase())
     ) ?? [];
 
   const fetchUsers = async () => {
@@ -144,6 +162,18 @@ export default function Setup() {
       setUsersError(err?.response?.data?.error ?? "Failed to fetch users");
     } finally {
       setUsersLoading(false);
+    }
+  };
+
+  const fetchRoles = async () => {
+    try {
+      setRolesLoading(true);
+      const response = await api.get("/api/roles");
+      setRoles(response.data?.data ?? []);
+    } catch {
+      setRoles([]);
+    } finally {
+      setRolesLoading(false);
     }
   };
 
@@ -178,7 +208,13 @@ export default function Setup() {
   useEffect(() => {
     if (selectedKey === "users") {
       fetchUsers();
+      fetchRoles();
     }
+
+    if (selectedKey === "roles") {
+      fetchCompanyInformation();
+    }
+
     if (selectedKey === "company") {
       fetchCompanyInformation();
     }
@@ -191,6 +227,7 @@ export default function Setup() {
       last_name: record.last_name || "",
       username: record.username || "",
       email: record.email || "",
+      role_id: record.role_id ?? undefined,
     });
     setIsUserModalOpen(true);
   };
@@ -207,7 +244,11 @@ export default function Setup() {
     try {
       setIsUserSaving(true);
 
-      await api.put(`/api/users/${selectedUser.ID}`, values);
+      await api.put(`/api/users/${selectedUser.ID}`, {
+        ...values,
+        role_id: values.role_id ?? null,
+      });
+
       messageApi.success("User updated successfully");
       closeUserModal();
       fetchUsers();
@@ -243,6 +284,12 @@ export default function Setup() {
     }
   };
 
+  const getRoleLabel = (roleId?: number | null) => {
+    if (!roleId) return "-";
+    const role = roles.find((item) => item.ID === roleId);
+    return role?.label || "-";
+  };
+
   const userColumns: ColumnsType<UserRecord> = [
     {
       title: "Name",
@@ -262,6 +309,11 @@ export default function Setup() {
       title: "Email",
       dataIndex: "email",
       key: "email",
+    },
+    {
+      title: "Role",
+      key: "role",
+      render: (_, record) => getRoleLabel(record.role_id),
     },
     {
       title: "Action",
@@ -354,6 +406,18 @@ export default function Setup() {
               <Input />
             </Form.Item>
 
+            <Form.Item name="role_id" label="Role">
+              <Select
+                allowClear
+                placeholder="Select role"
+                loading={rolesLoading}
+                options={roles.map((role) => ({
+                  label: role.label,
+                  value: role.ID,
+                }))}
+              />
+            </Form.Item>
+
             <Form.Item style={{ marginBottom: 0 }}>
               <Space style={{ width: "100%", justifyContent: "flex-end" }}>
                 <Button onClick={closeUserModal}>Cancel</Button>
@@ -391,7 +455,9 @@ export default function Setup() {
           <Form.Item
             name="organization_name"
             label="Organization Name"
-            rules={[{ required: true, message: "Please enter Organization Name" }]}
+            rules={[
+              { required: true, message: "Please enter Organization Name" },
+            ]}
           >
             <Input disabled={!!companyInfo && !isEditingCompany} />
           </Form.Item>
@@ -433,9 +499,15 @@ export default function Setup() {
               ) : (
                 <>
                   {companyInfo ? (
-                    <Button onClick={() => setIsEditingCompany(false)}>Cancel</Button>
+                    <Button onClick={() => setIsEditingCompany(false)}>
+                      Cancel
+                    </Button>
                   ) : null}
-                  <Button type="primary" htmlType="submit" loading={companySaving}>
+                  <Button
+                    type="primary"
+                    htmlType="submit"
+                    loading={companySaving}
+                  >
                     Save
                   </Button>
                 </>
@@ -455,17 +527,13 @@ export default function Setup() {
     switch (selectedKey) {
       case "users":
         return renderUsersSection();
+
       case "roles":
-        return (
-          <Card style={styles.contentCard}>
-            <Title level={3} style={{ marginTop: 0 }}>
-              Roles
-            </Title>
-            <Text>Role hierarchy and role management will be displayed here.</Text>
-          </Card>
-        );
+        return <SetupRolesSection companyInfo={companyInfo} />;
+
       case "company":
         return renderCompanySection();
+
       default:
         return renderWelcome();
     }
@@ -663,7 +731,8 @@ const styles = {
     width: 42,
     height: 42,
     borderRadius: "50%",
-    background: "radial-gradient(circle, #ffd76a 0%, #ffb703 70%, #fb8500 100%)",
+    background:
+      "radial-gradient(circle, #ffd76a 0%, #ffb703 70%, #fb8500 100%)",
     transform: "translate(-50%, -50%)",
     boxShadow: "0 0 24px rgba(255,183,3,0.35)",
   },
