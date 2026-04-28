@@ -75,6 +75,8 @@ export default function CaseRecord() {
       setLoading(true);
       const response = await api.get<CaseResponse>(`/api/cases/${id}`);
       setCaseRecord(response.data.data);
+      // Log this case as recently viewed (fire and forget)
+      api.post(`/api/recently-viewed/cases/${id}`).catch(() => {});
     } catch (err: any) {
       messageApi.error(err?.response?.data?.error ?? "Error fetching case");
     } finally {

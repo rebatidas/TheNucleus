@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   Button,
+  Empty,
   Form,
   Input,
   message,
@@ -64,13 +65,25 @@ type CustomerFormValues = {
   billing_address?: string;
 };
 
+const LIST_VIEW_OPTIONS = [
+  { label: "All Cases", value: "all_cases" },
+  { label: "My Cases", value: "my_cases" },
+  { label: "Recently Viewed", value: "recently_viewed" },
+];
+
+const EMPTY_STATE_TEXT: Record<string, string> = {
+  all_cases: "No cases found",
+  my_cases: "You haven't created any cases yet",
+  recently_viewed: "No recently viewed cases in the last 30 days",
+};
+
 export default function Cases() {
   const navigate = useNavigate();
 
   const [cases, setCases] = useState<CaseRecord[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(false);
-  const [selectedListView, setSelectedListView] = useState("All");
+  const [selectedListView, setSelectedListView] = useState("all_cases");
   const [isCaseModalOpen, setIsCaseModalOpen] = useState(false);
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
   const [isCaseSaving, setIsCaseSaving] = useState(false);
@@ -80,10 +93,10 @@ export default function Cases() {
   const [customerForm] = Form.useForm<CustomerFormValues>();
   const [messageApi, contextHolder] = message.useMessage();
 
-  const fetchCases = async () => {
+  const fetchCases = async (view: string = "all_cases") => {
     try {
       setLoading(true);
-      const response = await api.get<CaseResponse>("/api/cases");
+      const response = await api.get<CaseResponse>(`/api/cases?view=${view}`);
       setCases(response.data.data || []);
     } catch (err: any) {
       messageApi.error(err?.response?.data?.error ?? "Error fetching cases");
@@ -102,9 +115,14 @@ export default function Cases() {
   };
 
   useEffect(() => {
-    fetchCases();
+    fetchCases("all_cases");
     fetchCustomers();
   }, []);
+
+  const handleListViewChange = (value: string) => {
+    setSelectedListView(value);
+    fetchCases(value);
+  };
 
   const openCaseModal = () => {
     caseForm.resetFields();
@@ -250,13 +268,9 @@ export default function Cases() {
         <div style={{ marginBottom: 16 }}>
           <Select
             value={selectedListView}
-            onChange={setSelectedListView}
+            onChange={handleListViewChange}
             style={{ width: 220 }}
-            options={[
-              { label: "All", value: "All" },
-              { label: "My Cases", value: "My Cases" },
-              { label: "All Cases", value: "All Cases" },
-            ]}
+            options={LIST_VIEW_OPTIONS}
           />
         </div>
 
@@ -266,6 +280,16 @@ export default function Cases() {
           dataSource={cases}
           loading={loading}
           pagination={{ pageSize: 10 }}
+          locale={{
+            emptyText: (
+              <Empty
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                description={
+                  EMPTY_STATE_TEXT[selectedListView] ?? "No records found"
+                }
+              />
+            ),
+          }}
         />
       </div>
 

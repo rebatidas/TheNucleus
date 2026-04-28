@@ -46,6 +46,8 @@ vi.mock("../api/client", () => ({
 describe("CustomerRecord", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Default: recently-viewed POST resolves silently so .catch() doesn't throw
+    vi.mocked(api.post).mockResolvedValue({ data: {} } as any);
   });
 
   it("renders customer details and related cases", async () => {

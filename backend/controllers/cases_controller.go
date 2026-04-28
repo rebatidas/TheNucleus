@@ -36,6 +36,11 @@ func CreateCase(c *gin.Context) {
 		input.Status = "New"
 	}
 
+	if userID, exists := c.Get("user_id"); exists {
+		input.CreatedBy = userID.(uint)
+		input.LastModifiedBy = userID.(uint)
+	}
+
 	// temporary unique value so insert succeeds
 	input.CaseNumber = fmt.Sprintf("TEMP-%d", time.Now().UnixNano())
 
@@ -71,18 +76,70 @@ func CreateCase(c *gin.Context) {
 }
 
 func GetCases(c *gin.Context) {
-	var cases []models.Case
+	view := c.DefaultQuery("view", "all_cases")
+	userID, userIDExists := c.Get("user_id")
 
-	if err := config.DB.Preload("Customer").Find(&cases).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to fetch cases",
-		})
-		return
+	switch view {
+	case "my_cases":
+		if !userIDExists {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication required"})
+			return
+		}
+		var cases []models.Case
+		if err := config.DB.Preload("Customer").Where("created_by = ?", userID).Find(&cases).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch cases"})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"data": cases})
+
+	case "recently_viewed":
+		if !userIDExists {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication required"})
+			return
+		}
+		thirtyDaysAgo := time.Now().AddDate(0, 0, -30)
+		var recentEntries []models.RecentlyViewed
+		config.DB.
+			Where("user_id = ? AND record_type = ? AND viewed_at > ?", userID, "case", thirtyDaysAgo).
+			Order("viewed_at desc").
+			Find(&recentEntries)
+
+		if len(recentEntries) == 0 {
+			c.JSON(http.StatusOK, gin.H{"data": []models.Case{}})
+			return
+		}
+
+		recordIDs := make([]uint, len(recentEntries))
+		for i, entry := range recentEntries {
+			recordIDs[i] = entry.RecordID
+		}
+
+		var cases []models.Case
+		config.DB.Preload("Customer").Where("id IN ?", recordIDs).Find(&cases)
+
+		// Preserve recently-viewed order
+		caseMap := make(map[uint]models.Case)
+		for _, cs := range cases {
+			caseMap[cs.ID] = cs
+		}
+		ordered := make([]models.Case, 0, len(recordIDs))
+		for _, id := range recordIDs {
+			if cs, ok := caseMap[id]; ok {
+				ordered = append(ordered, cs)
+			}
+		}
+		c.JSON(http.StatusOK, gin.H{"data": ordered})
+
+	default: // "all_cases" or anything else
+		var cases []models.Case
+		if err := config.DB.Preload("Customer").Find(&cases).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Failed to fetch cases",
+			})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"data": cases})
 	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"data": cases,
-	})
 }
 
 func GetCaseByID(c *gin.Context) {
@@ -125,7 +182,10 @@ func UpdateCase(c *gin.Context) {
 	caseRecord.Description = input.Description
 	caseRecord.CustomerID = input.CustomerID
 	caseRecord.Resolution = input.Resolution
-	caseRecord.LastModifiedBy = input.LastModifiedBy
+
+	if userID, exists := c.Get("user_id"); exists {
+		caseRecord.LastModifiedBy = userID.(uint)
+	}
 
 	if err := config.DB.Save(&caseRecord).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
