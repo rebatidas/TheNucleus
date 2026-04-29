@@ -14,6 +14,7 @@ import type { ColumnsType } from "antd/es/table";
 import { Link, useNavigate } from "react-router-dom";
 import AppLayout from "../components/AppLayout";
 import { api } from "../api/client";
+import { usePermissions } from "../hooks/usePermissions";
 
 type Customer = {
   ID: number;
@@ -93,7 +94,22 @@ export default function Cases() {
   const [customerForm] = Form.useForm<CustomerFormValues>();
   const [messageApi, contextHolder] = message.useMessage();
 
+<<<<<<< HEAD
   const fetchCases = async (view: string = "all_cases") => {
+=======
+  const {
+    canViewObject,
+    canCreateObject,
+    isFieldVisible,
+    isFieldReadOnly,
+  } = usePermissions();
+
+  const canViewCases = canViewObject("Cases");
+  const canCreateCases = canCreateObject("Cases");
+  const canCreateCustomers = canCreateObject("Customers");
+
+  const fetchCases = async () => {
+>>>>>>> ad7fbb6 (Complete US-15: profile access with object and field-level security)
     try {
       setLoading(true);
       const response = await api.get<CaseResponse>(`/api/cases?view=${view}`);
@@ -110,14 +126,27 @@ export default function Cases() {
       const response = await api.get<CustomerResponse>("/api/customers");
       setCustomers(response.data.data || []);
     } catch (err: any) {
-      messageApi.error(err?.response?.data?.error ?? "Error fetching customers");
+      // Only show this if case customer field is actually visible/used
+      if (isFieldVisible("Cases", "customer_id")) {
+        messageApi.error(err?.response?.data?.error ?? "Error fetching customers");
+      }
     }
   };
 
   useEffect(() => {
+<<<<<<< HEAD
     fetchCases("all_cases");
     fetchCustomers();
   }, []);
+=======
+    if (!canViewCases) return;
+    fetchCases();
+
+    if (isFieldVisible("Cases", "customer_id")) {
+      fetchCustomers();
+    }
+  }, [canViewCases]);
+>>>>>>> ad7fbb6 (Complete US-15: profile access with object and field-level security)
 
   const handleListViewChange = (value: string) => {
     setSelectedListView(value);
@@ -184,7 +213,8 @@ export default function Cases() {
       setIsCaseSaving(true);
 
       const response = await api.post("/api/cases", {
-        customer_id: values.customer_id,
+        customer_id:
+          values.customer_id === "new_customer" ? undefined : values.customer_id,
         subject: values.subject,
         description: values.description,
         status: values.status,
@@ -198,11 +228,11 @@ export default function Cases() {
 
       if (createdCase?.id) {
         navigate(`/cases/${createdCase.id}`);
+      } else {
+        fetchCases();
       }
     } catch (err: any) {
-      messageApi.error(
-        err?.response?.data?.error ?? "Error creating case"
-      );
+      messageApi.error(err?.response?.data?.error ?? "Error creating case");
     } finally {
       setIsCaseSaving(false);
     }
@@ -221,30 +251,55 @@ export default function Cases() {
       .join(" ");
   };
 
+  if (!canViewCases) {
+    return (
+      <AppLayout title="Cases">
+        {contextHolder}
+        <div style={{ padding: 24 }}>You do not have access to Cases.</div>
+      </AppLayout>
+    );
+  }
+
   const columns: ColumnsType<CaseRecord> = [
-    {
-      title: "Case Number",
-      dataIndex: "case_number",
-      key: "case_number",
-      render: (_, record) => (
-        <Link to={`/cases/${record.id}`}>{record.case_number}</Link>
-      ),
-    },
-    {
-      title: "Subject",
-      dataIndex: "subject",
-      key: "subject",
-    },
-    {
-      title: "Status",
-      dataIndex: "status",
-      key: "status",
-    },
-    {
-      title: "Customer",
-      key: "customer",
-      render: (_, record) => getCustomerName(record),
-    },
+    ...(isFieldVisible("Cases", "case_number")
+      ? [
+          {
+            title: "Case Number",
+            dataIndex: "case_number",
+            key: "case_number",
+            render: (_: unknown, record: CaseRecord) => (
+              <Link to={`/cases/${record.id}`}>{record.case_number || "-"}</Link>
+            ),
+          },
+        ]
+      : []),
+    ...(isFieldVisible("Cases", "subject")
+      ? [
+          {
+            title: "Subject",
+            dataIndex: "subject",
+            key: "subject",
+          },
+        ]
+      : []),
+    ...(isFieldVisible("Cases", "status")
+      ? [
+          {
+            title: "Status",
+            dataIndex: "status",
+            key: "status",
+          },
+        ]
+      : []),
+    ...(isFieldVisible("Cases", "customer_id")
+      ? [
+          {
+            title: "Customer",
+            key: "customer",
+            render: (_: unknown, record: CaseRecord) => getCustomerName(record),
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -260,9 +315,13 @@ export default function Cases() {
           }}
         >
           <div />
-          <Button type="primary" onClick={openCaseModal}>
-            New
-          </Button>
+          {canCreateCases ? (
+            <Button type="primary" onClick={openCaseModal}>
+              New
+            </Button>
+          ) : (
+            <div />
+          )}
         </Space>
 
         <div style={{ marginBottom: 16 }}>
@@ -302,56 +361,76 @@ export default function Cases() {
         destroyOnClose
       >
         <Form form={caseForm} layout="vertical" onFinish={handleCreateCase}>
-          <Form.Item
-            name="customer_id"
-            label="Customer Name"
-            rules={[{ required: true, message: "Please select customer" }]}
-          >
-            <Select
-              placeholder="Select customer"
-              onChange={handleCustomerDropdownChange}
-              options={[
-                ...customers.map((customer) => ({
-                  label: [
-                    customer.salutation,
-                    customer.first_name,
-                    customer.middle_name,
-                    customer.last_name,
-                  ]
-                    .filter(Boolean)
-                    .join(" "),
-                  value: customer.ID,
-                })),
-                { label: "+ New Customer", value: "new_customer" as const },
-              ]}
-            />
-          </Form.Item>
+          {isFieldVisible("Cases", "customer_id") ? (
+            <Form.Item
+              name="customer_id"
+              label="Customer Name"
+              rules={[{ required: true, message: "Please select customer" }]}
+            >
+              <Select
+                placeholder="Select customer"
+                disabled={isFieldReadOnly("Cases", "customer_id")}
+                onChange={handleCustomerDropdownChange}
+                options={[
+                  ...customers.map((customer) => ({
+                    label: [
+                      customer.salutation,
+                      customer.first_name,
+                      customer.middle_name,
+                      customer.last_name,
+                    ]
+                      .filter(Boolean)
+                      .join(" "),
+                    value: customer.ID,
+                  })),
+                  ...(canCreateCustomers
+                    ? [{ label: "+ New Customer", value: "new_customer" as const }]
+                    : []),
+                ]}
+              />
+            </Form.Item>
+          ) : null}
 
-          <Form.Item
-            name="subject"
-            label="Subject"
-            rules={[{ required: true, message: "Please enter subject" }]}
-          >
-            <Input />
-          </Form.Item>
+          {isFieldVisible("Cases", "subject") ? (
+            <Form.Item
+              name="subject"
+              label="Subject"
+              rules={[{ required: true, message: "Please enter subject" }]}
+            >
+              <Input disabled={isFieldReadOnly("Cases", "subject")} />
+            </Form.Item>
+          ) : null}
 
-          <Form.Item name="description" label="Description">
-            <Input.TextArea rows={4} />
-          </Form.Item>
+          {isFieldVisible("Cases", "description") ? (
+            <Form.Item name="description" label="Description">
+              <Input.TextArea
+                rows={4}
+                disabled={isFieldReadOnly("Cases", "description")}
+              />
+            </Form.Item>
+          ) : null}
 
-          <Form.Item name="status" label="Status">
-            <Select
-              options={[
-                { label: "New", value: "New" },
-                { label: "In Progress", value: "In Progress" },
-                { label: "Closed", value: "Closed" },
-              ]}
-            />
-          </Form.Item>
+          {isFieldVisible("Cases", "status") ? (
+            <Form.Item name="status" label="Status">
+              <Select
+                disabled={isFieldReadOnly("Cases", "status")}
+                options={[
+                  { label: "New", value: "New" },
+                  { label: "In Progress", value: "In Progress" },
+                  { label: "Closed", value: "Closed" },
+                ]}
+              />
+            </Form.Item>
+          ) : null}
 
-          <Form.Item name="resolution" label="Resolution">
-            <Input.TextArea rows={3} />
-          </Form.Item>
+          {isFieldVisible("Cases", "resolution") ? (
+            <Form.Item name="resolution" label="Resolution">
+              <Input.TextArea
+                rows={3}
+                disabled={isFieldReadOnly("Cases", "resolution")}
+              />
+            </Form.Item>
+          ) : null}
 
           <Form.Item style={{ marginBottom: 0 }}>
             <Space style={{ width: "100%", justifyContent: "flex-end" }}>
@@ -372,11 +451,7 @@ export default function Cases() {
         width={700}
         destroyOnClose
       >
-        <Form
-          form={customerForm}
-          layout="vertical"
-          onFinish={handleCreateCustomer}
-        >
+        <Form form={customerForm} layout="vertical" onFinish={handleCreateCustomer}>
           <Form.Item name="salutation" label="Salutation">
             <Input />
           </Form.Item>
@@ -431,11 +506,7 @@ export default function Cases() {
           <Form.Item style={{ marginBottom: 0 }}>
             <Space style={{ width: "100%", justifyContent: "flex-end" }}>
               <Button onClick={closeCustomerModal}>Cancel</Button>
-              <Button
-                type="primary"
-                htmlType="submit"
-                loading={isCustomerSaving}
-              >
+              <Button type="primary" htmlType="submit" loading={isCustomerSaving}>
                 Save
               </Button>
             </Space>

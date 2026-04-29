@@ -7,6 +7,21 @@ import { api } from "../api/client";
 
 const mockNavigate = vi.fn();
 
+const permissionState = {
+  view: true,
+  create: true,
+  customerCreate: true,
+  visibleFields: new Set<string>([
+    "case_number",
+    "status",
+    "subject",
+    "description",
+    "customer_id",
+    "resolution",
+  ]),
+  readOnlyFields: new Set<string>(),
+};
+
 vi.mock("react-router-dom", async () => {
   const actual = await vi.importActual<typeof import("react-router-dom")>(
     "react-router-dom"
@@ -40,6 +55,7 @@ vi.mock("../api/client", () => ({
   },
 }));
 
+<<<<<<< HEAD
 const caseFixture = {
   id: 1,
   case_number: "CASE-1001",
@@ -84,10 +100,41 @@ function mockGetForView(cases: object[]) {
     return Promise.reject(new Error(`Unhandled GET url: ${url}`));
   });
 }
+=======
+vi.mock("../hooks/usePermissions", () => ({
+  usePermissions: () => ({
+    canViewObject: (objectName: string) =>
+      objectName === "Cases" ? permissionState.view : true,
+    canCreateObject: (objectName: string) => {
+      if (objectName === "Cases") return permissionState.create;
+      if (objectName === "Customers") return permissionState.customerCreate;
+      return true;
+    },
+    canEditObject: () => true,
+    canDeleteObject: () => true,
+    isFieldVisible: (objectName: string, fieldName: string) =>
+      objectName !== "Cases" || permissionState.visibleFields.has(fieldName),
+    isFieldReadOnly: (objectName: string, fieldName: string) =>
+      objectName === "Cases" && permissionState.readOnlyFields.has(fieldName),
+  }),
+}));
+>>>>>>> ad7fbb6 (Complete US-15: profile access with object and field-level security)
 
 describe("Cases", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    permissionState.view = true;
+    permissionState.create = true;
+    permissionState.customerCreate = true;
+    permissionState.visibleFields = new Set([
+      "case_number",
+      "status",
+      "subject",
+      "description",
+      "customer_id",
+      "resolution",
+    ]);
+    permissionState.readOnlyFields = new Set();
   });
 
   it("renders cases list from API", async () => {
@@ -244,4 +291,91 @@ describe("Cases", () => {
 
     expect(mockNavigate).toHaveBeenCalledWith("/cases/2");
   });
+<<<<<<< HEAD
 });
+=======
+
+  it("shows no access message when case view permission is missing", () => {
+    permissionState.view = false;
+
+    render(
+      <MemoryRouter>
+        <Cases />
+      </MemoryRouter>
+    );
+
+    expect(
+      screen.getByText(/you do not have access to cases/i)
+    ).toBeInTheDocument();
+    expect(api.get).not.toHaveBeenCalled();
+  });
+
+  it("hides New button when case create permission is missing", async () => {
+    permissionState.create = false;
+
+    vi.mocked(api.get).mockResolvedValue({
+      data: { data: [] },
+    } as any);
+
+    render(
+      <MemoryRouter>
+        <Cases />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(api.get).toHaveBeenCalledWith("/api/cases");
+    });
+
+    expect(
+      screen.queryByRole("button", { name: /^new$/i })
+    ).not.toBeInTheDocument();
+  });
+
+  it("hides case fields that are not visible", async () => {
+    permissionState.visibleFields = new Set(["subject"]);
+
+    vi.mocked(api.get).mockResolvedValue({
+      data: { data: [] },
+    } as any);
+
+    render(
+      <MemoryRouter>
+        <Cases />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText("Subject")).toBeInTheDocument();
+    expect(screen.queryByText("Case Number")).not.toBeInTheDocument();
+    expect(screen.queryByText("Status")).not.toBeInTheDocument();
+    expect(screen.queryByText("Customer")).not.toBeInTheDocument();
+  });
+
+  it("disables read-only case fields in create modal", async () => {
+    permissionState.readOnlyFields = new Set(["subject", "status"]);
+
+    vi.mocked(api.get).mockImplementation((url: string) => {
+      if (url === "/api/cases") {
+        return Promise.resolve({ data: { data: [] } } as any);
+      }
+      if (url === "/api/customers") {
+        return Promise.resolve({
+          data: { data: [{ ID: 10, first_name: "John", last_name: "Doe" }] },
+        } as any);
+      }
+      return Promise.reject(new Error(`Unhandled GET url: ${url}`));
+    });
+
+    render(
+      <MemoryRouter>
+        <Cases />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: /^new$/i }));
+    await screen.findByText("New Case");
+
+    expect(screen.getByLabelText(/subject/i)).toBeDisabled();
+  });
+});
+>>>>>>> ad7fbb6 (Complete US-15: profile access with object and field-level security)

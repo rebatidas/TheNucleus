@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 package controllers
 
 import (
@@ -186,3 +187,251 @@ func DeleteCustomer(c *gin.Context) {
 		"message": "Customer deleted successfully",
 	})
 }
+=======
+package controllers
+
+import (
+	"log"
+	"net/http"
+
+	"thenucleus-backend/config"
+	"thenucleus-backend/models"
+
+	"github.com/gin-gonic/gin"
+)
+
+func sanitizeCustomerForRead(customer *models.Customer, profileID *uint) {
+	if !isFieldVisible(profileID, "Customers", "salutation") {
+		customer.Salutation = ""
+	}
+	if !isFieldVisible(profileID, "Customers", "first_name") {
+		customer.FirstName = ""
+	}
+	if !isFieldVisible(profileID, "Customers", "middle_name") {
+		customer.MiddleName = ""
+	}
+	if !isFieldVisible(profileID, "Customers", "last_name") {
+		customer.LastName = ""
+	}
+	if !isFieldVisible(profileID, "Customers", "email") {
+		customer.Email = ""
+	}
+	if !isFieldVisible(profileID, "Customers", "phone") {
+		customer.Phone = ""
+	}
+	if !isFieldVisible(profileID, "Customers", "shipping_address") {
+		customer.ShippingAddress = ""
+	}
+	if !isFieldVisible(profileID, "Customers", "billing_address") {
+		customer.BillingAddress = ""
+	}
+}
+
+func CreateCustomer(c *gin.Context) {
+	user, err := getCurrentUserFromToken(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "Unauthorized",
+		})
+		return
+	}
+
+	if !enforceObjectPermission(c, user.ProfileID, "Customers", "create") {
+		return
+	}
+
+	var input models.Customer
+	if err := c.ShouldBindJSON(&input); err != nil {
+		log.Println("Bind error:", err)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	result := config.DB.Create(&input)
+	if result.Error != nil {
+		log.Println("Create error:", result.Error)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": result.Error.Error(),
+		})
+		return
+	}
+
+	sanitizeCustomerForRead(&input, user.ProfileID)
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Customer created successfully",
+		"data":    input,
+	})
+}
+
+func GetCustomers(c *gin.Context) {
+	user, err := getCurrentUserFromToken(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "Unauthorized",
+		})
+		return
+	}
+
+	if !enforceObjectPermission(c, user.ProfileID, "Customers", "view") {
+		return
+	}
+
+	var customers []models.Customer
+
+	result := config.DB.Find(&customers)
+	if result.Error != nil {
+		log.Println("Fetch customers error:", result.Error)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": result.Error.Error(),
+		})
+		return
+	}
+
+	for i := range customers {
+		sanitizeCustomerForRead(&customers[i], user.ProfileID)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data": customers,
+	})
+}
+
+func GetCustomerByID(c *gin.Context) {
+	user, err := getCurrentUserFromToken(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "Unauthorized",
+		})
+		return
+	}
+
+	if !enforceObjectPermission(c, user.ProfileID, "Customers", "view") {
+		return
+	}
+
+	id := c.Param("id")
+	var customer models.Customer
+
+	if err := config.DB.First(&customer, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "Customer not found",
+		})
+		return
+	}
+
+	sanitizeCustomerForRead(&customer, user.ProfileID)
+
+	c.JSON(http.StatusOK, gin.H{
+		"data": customer,
+	})
+}
+
+func UpdateCustomer(c *gin.Context) {
+	user, err := getCurrentUserFromToken(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "Unauthorized",
+		})
+		return
+	}
+
+	if !enforceObjectPermission(c, user.ProfileID, "Customers", "edit") {
+		return
+	}
+
+	id := c.Param("id")
+	var customer models.Customer
+
+	if err := config.DB.First(&customer, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "Customer not found",
+		})
+		return
+	}
+
+	var input models.Customer
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	if !isFieldReadOnly(user.ProfileID, "Customers", "salutation") {
+		customer.Salutation = input.Salutation
+	}
+	if !isFieldReadOnly(user.ProfileID, "Customers", "first_name") {
+		customer.FirstName = input.FirstName
+	}
+	if !isFieldReadOnly(user.ProfileID, "Customers", "middle_name") {
+		customer.MiddleName = input.MiddleName
+	}
+	if !isFieldReadOnly(user.ProfileID, "Customers", "last_name") {
+		customer.LastName = input.LastName
+	}
+	if !isFieldReadOnly(user.ProfileID, "Customers", "email") {
+		customer.Email = input.Email
+	}
+	if !isFieldReadOnly(user.ProfileID, "Customers", "phone") {
+		customer.Phone = input.Phone
+	}
+	if !isFieldReadOnly(user.ProfileID, "Customers", "shipping_address") {
+		customer.ShippingAddress = input.ShippingAddress
+	}
+	if !isFieldReadOnly(user.ProfileID, "Customers", "billing_address") {
+		customer.BillingAddress = input.BillingAddress
+	}
+
+	if err := config.DB.Save(&customer).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to update customer",
+		})
+		return
+	}
+
+	sanitizeCustomerForRead(&customer, user.ProfileID)
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Customer updated successfully",
+		"data":    customer,
+	})
+}
+
+func DeleteCustomer(c *gin.Context) {
+	user, err := getCurrentUserFromToken(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "Unauthorized",
+		})
+		return
+	}
+
+	if !enforceObjectPermission(c, user.ProfileID, "Customers", "delete") {
+		return
+	}
+
+	id := c.Param("id")
+	var customer models.Customer
+
+	if err := config.DB.First(&customer, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "Customer not found",
+		})
+		return
+	}
+
+	if err := config.DB.Delete(&customer).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to delete customer",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Customer deleted successfully",
+	})
+}
+>>>>>>> ad7fbb6 (Complete US-15: profile access with object and field-level security)

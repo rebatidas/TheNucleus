@@ -7,6 +7,22 @@ import { api } from "../api/client";
 
 const mockNavigate = vi.fn();
 
+const permissionState = {
+  view: true,
+  create: true,
+  visibleFields: new Set<string>([
+    "salutation",
+    "first_name",
+    "middle_name",
+    "last_name",
+    "email",
+    "phone",
+    "shipping_address",
+    "billing_address",
+  ]),
+  readOnlyFields: new Set<string>(),
+};
+
 vi.mock("react-router-dom", async () => {
   const actual = await vi.importActual<typeof import("react-router-dom")>(
     "react-router-dom"
@@ -40,6 +56,7 @@ vi.mock("../api/client", () => ({
   },
 }));
 
+<<<<<<< HEAD
 const customerFixture = {
   ID: 1,
   salutation: "Mr.",
@@ -51,10 +68,39 @@ const customerFixture = {
   shipping_address: "Ship address",
   billing_address: "Bill address",
 };
+=======
+vi.mock("../hooks/usePermissions", () => ({
+  usePermissions: () => ({
+    canViewObject: (objectName: string) =>
+      objectName === "Customers" ? permissionState.view : true,
+    canCreateObject: (objectName: string) =>
+      objectName === "Customers" ? permissionState.create : true,
+    canEditObject: () => true,
+    canDeleteObject: () => true,
+    isFieldVisible: (objectName: string, fieldName: string) =>
+      objectName !== "Customers" || permissionState.visibleFields.has(fieldName),
+    isFieldReadOnly: (objectName: string, fieldName: string) =>
+      objectName === "Customers" && permissionState.readOnlyFields.has(fieldName),
+  }),
+}));
+>>>>>>> ad7fbb6 (Complete US-15: profile access with object and field-level security)
 
 describe("Customers", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    permissionState.view = true;
+    permissionState.create = true;
+    permissionState.visibleFields = new Set([
+      "salutation",
+      "first_name",
+      "middle_name",
+      "last_name",
+      "email",
+      "phone",
+      "shipping_address",
+      "billing_address",
+    ]);
+    permissionState.readOnlyFields = new Set();
   });
 
   it("renders customer list from API", async () => {
@@ -153,8 +199,13 @@ describe("Customers", () => {
     expect(mockNavigate).toHaveBeenCalledWith("/customers/101");
   });
 
+<<<<<<< HEAD
   it("defaults to All Customers view", async () => {
     vi.mocked(api.get).mockResolvedValue({ data: { data: [] } } as any);
+=======
+  it("shows no access message when customer view permission is missing", async () => {
+    permissionState.view = false;
+>>>>>>> ad7fbb6 (Complete US-15: profile access with object and field-level security)
 
     render(
       <MemoryRouter>
@@ -162,6 +213,7 @@ describe("Customers", () => {
       </MemoryRouter>
     );
 
+<<<<<<< HEAD
     await waitFor(() => {
       expect(api.get).toHaveBeenCalledWith(
         expect.stringContaining("view=all_customers")
@@ -172,6 +224,19 @@ describe("Customers", () => {
   it("fetches with my_customers view when My Customers is selected", async () => {
     vi.mocked(api.get).mockResolvedValue({
       data: { data: [customerFixture] },
+=======
+    expect(
+      screen.getByText(/you do not have access to customers/i)
+    ).toBeInTheDocument();
+    expect(api.get).not.toHaveBeenCalled();
+  });
+
+  it("hides New button when customer create permission is missing", async () => {
+    permissionState.create = false;
+
+    vi.mocked(api.get).mockResolvedValue({
+      data: { data: [] },
+>>>>>>> ad7fbb6 (Complete US-15: profile access with object and field-level security)
     } as any);
 
     render(
@@ -180,6 +245,7 @@ describe("Customers", () => {
       </MemoryRouter>
     );
 
+<<<<<<< HEAD
     await screen.findByText("Mr. John Doe");
 
     vi.mocked(api.get).mockResolvedValue({ data: { data: [] } } as any);
@@ -200,6 +266,22 @@ describe("Customers", () => {
   it("fetches with recently_viewed when Recently Viewed is selected", async () => {
     vi.mocked(api.get).mockResolvedValue({
       data: { data: [customerFixture] },
+=======
+    await waitFor(() => {
+      expect(api.get).toHaveBeenCalledWith("/api/customers");
+    });
+
+    expect(
+      screen.queryByRole("button", { name: /^new$/i })
+    ).not.toBeInTheDocument();
+  });
+
+  it("hides fields that are not visible", async () => {
+    permissionState.visibleFields = new Set(["first_name", "last_name"]);
+
+    vi.mocked(api.get).mockResolvedValue({
+      data: { data: [] },
+>>>>>>> ad7fbb6 (Complete US-15: profile access with object and field-level security)
     } as any);
 
     render(
@@ -208,6 +290,7 @@ describe("Customers", () => {
       </MemoryRouter>
     );
 
+<<<<<<< HEAD
     await screen.findByText("Mr. John Doe");
 
     vi.mocked(api.get).mockResolvedValue({ data: { data: [] } } as any);
@@ -227,6 +310,25 @@ describe("Customers", () => {
 
   it("shows empty state when no customers are returned", async () => {
     vi.mocked(api.get).mockResolvedValue({ data: { data: [] } } as any);
+=======
+    fireEvent.click(await screen.findByRole("button", { name: /^new$/i }));
+    await screen.findByText("New Customer");
+
+    expect(screen.getByLabelText(/first name/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/last name/i)).toBeInTheDocument();
+
+    expect(screen.queryByLabelText(/email/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/phone/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/billing address/i)).not.toBeInTheDocument();
+  });
+
+  it("disables fields that are read only", async () => {
+    permissionState.readOnlyFields = new Set(["email", "phone"]);
+
+    vi.mocked(api.get).mockResolvedValue({
+      data: { data: [] },
+    } as any);
+>>>>>>> ad7fbb6 (Complete US-15: profile access with object and field-level security)
 
     render(
       <MemoryRouter>
@@ -234,6 +336,15 @@ describe("Customers", () => {
       </MemoryRouter>
     );
 
+<<<<<<< HEAD
     expect(await screen.findByText("No customers found")).toBeInTheDocument();
+=======
+    fireEvent.click(await screen.findByRole("button", { name: /^new$/i }));
+    await screen.findByText("New Customer");
+
+    expect(screen.getByLabelText(/email/i)).toBeDisabled();
+    expect(screen.getByLabelText(/phone/i)).toBeDisabled();
+    expect(screen.getByLabelText(/first name/i)).not.toBeDisabled();
+>>>>>>> ad7fbb6 (Complete US-15: profile access with object and field-level security)
   });
 });

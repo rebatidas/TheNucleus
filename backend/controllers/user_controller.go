@@ -65,6 +65,10 @@ func UpdateUser(c *gin.Context) {
 	user.Username = input.Username
 	user.Email = input.Email
 	user.RoleID = input.RoleID
+<<<<<<< HEAD
+=======
+	user.ProfileID = input.ProfileID
+>>>>>>> ad7fbb6 (Complete US-15: profile access with object and field-level security)
 	user.Name = strings.TrimSpace(input.FirstName + " " + input.LastName)
 
 	if user.Name == "" {

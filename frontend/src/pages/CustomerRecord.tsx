@@ -14,6 +14,7 @@ import {
 import { Link, useNavigate, useParams } from "react-router-dom";
 import AppLayout from "../components/AppLayout";
 import { api } from "../api/client";
+import { usePermissions } from "../hooks/usePermissions";
 
 type Customer = {
   ID: number;
@@ -83,6 +84,21 @@ export default function CustomerRecord() {
   const [caseForm] = Form.useForm<CaseFormValues>();
   const [messageApi, contextHolder] = message.useMessage();
 
+  const {
+    canViewObject,
+    canCreateObject,
+    canEditObject,
+    canDeleteObject,
+    isFieldVisible,
+    isFieldReadOnly,
+  } = usePermissions();
+
+  const canViewCustomers = canViewObject("Customers");
+  const canCreateCases = canCreateObject("Cases");
+  const canViewCases = canViewObject("Cases");
+  const canEditCustomers = canEditObject("Customers");
+  const canDeleteCustomers = canDeleteObject("Customers");
+
   const fetchCustomer = async () => {
     try {
       setLoading(true);
@@ -114,10 +130,14 @@ export default function CustomerRecord() {
   };
 
   useEffect(() => {
-    if (!id) return;
+    if (!id || !canViewCustomers) return;
     fetchCustomer();
+  }, [id, canViewCustomers]);
+
+  useEffect(() => {
+    if (!id || !canViewCustomers || !canViewCases) return;
     fetchCustomerCases();
-  }, [id]);
+  }, [id, canViewCustomers, canViewCases]);
 
   const openEditModal = () => {
     if (!customer) return;
@@ -203,12 +223,21 @@ export default function CustomerRecord() {
     }
   };
 
+  if (!canViewCustomers) {
+    return (
+      <AppLayout title="Customers">
+        {contextHolder}
+        <div style={{ padding: 24 }}>You do not have access to this record.</div>
+      </AppLayout>
+    );
+  }
+
   const fullName = customer
     ? [
-        customer.salutation,
-        customer.first_name,
-        customer.middle_name,
-        customer.last_name,
+        isFieldVisible("Customers", "salutation") ? customer.salutation : "",
+        isFieldVisible("Customers", "first_name") ? customer.first_name : "",
+        isFieldVisible("Customers", "middle_name") ? customer.middle_name : "",
+        isFieldVisible("Customers", "last_name") ? customer.last_name : "",
       ]
         .filter(Boolean)
         .join(" ")
@@ -221,7 +250,7 @@ export default function CustomerRecord() {
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "2.2fr 1fr",
+          gridTemplateColumns: canViewCases ? "2.2fr 1fr" : "1fr",
           gap: 24,
           alignItems: "start",
         }}
@@ -231,156 +260,188 @@ export default function CustomerRecord() {
           title={fullName || "Customer Record"}
           extra={
             <Space>
-              <Button onClick={openEditModal}>Edit</Button>
-              <Popconfirm
-                title="Delete customer"
-                description="Are you sure you want to delete this customer?"
-                onConfirm={handleDelete}
-                okText="Yes"
-                cancelText="No"
-              >
-                <Button danger loading={isDeleting}>
-                  Delete
-                </Button>
-              </Popconfirm>
+              {canEditCustomers ? (
+                <Button onClick={openEditModal}>Edit</Button>
+              ) : null}
+
+              {canDeleteCustomers ? (
+                <Popconfirm
+                  title="Delete customer"
+                  description="Are you sure you want to delete this customer?"
+                  onConfirm={handleDelete}
+                  okText="Yes"
+                  cancelText="No"
+                >
+                  <Button danger loading={isDeleting}>
+                    Delete
+                  </Button>
+                </Popconfirm>
+              ) : null}
             </Space>
           }
         >
           {customer && (
             <Descriptions column={1} bordered>
-              <Descriptions.Item label="Salutation">
-                {customer.salutation || "-"}
-              </Descriptions.Item>
-              <Descriptions.Item label="First Name">
-                {customer.first_name}
-              </Descriptions.Item>
-              <Descriptions.Item label="Middle Name">
-                {customer.middle_name || "-"}
-              </Descriptions.Item>
-              <Descriptions.Item label="Last Name">
-                {customer.last_name}
-              </Descriptions.Item>
-              <Descriptions.Item label="Email">
-                {customer.email}
-              </Descriptions.Item>
-              <Descriptions.Item label="Phone">
-                {customer.phone}
-              </Descriptions.Item>
-              <Descriptions.Item label="Shipping Address">
-                {customer.shipping_address || "-"}
-              </Descriptions.Item>
-              <Descriptions.Item label="Billing Address">
-                {customer.billing_address || "-"}
-              </Descriptions.Item>
+              {isFieldVisible("Customers", "salutation") ? (
+                <Descriptions.Item label="Salutation">
+                  {customer.salutation || "-"}
+                </Descriptions.Item>
+              ) : null}
+
+              {isFieldVisible("Customers", "first_name") ? (
+                <Descriptions.Item label="First Name">
+                  {customer.first_name || "-"}
+                </Descriptions.Item>
+              ) : null}
+
+              {isFieldVisible("Customers", "middle_name") ? (
+                <Descriptions.Item label="Middle Name">
+                  {customer.middle_name || "-"}
+                </Descriptions.Item>
+              ) : null}
+
+              {isFieldVisible("Customers", "last_name") ? (
+                <Descriptions.Item label="Last Name">
+                  {customer.last_name || "-"}
+                </Descriptions.Item>
+              ) : null}
+
+              {isFieldVisible("Customers", "email") ? (
+                <Descriptions.Item label="Email">
+                  {customer.email || "-"}
+                </Descriptions.Item>
+              ) : null}
+
+              {isFieldVisible("Customers", "phone") ? (
+                <Descriptions.Item label="Phone">
+                  {customer.phone || "-"}
+                </Descriptions.Item>
+              ) : null}
+
+              {isFieldVisible("Customers", "shipping_address") ? (
+                <Descriptions.Item label="Shipping Address">
+                  {customer.shipping_address || "-"}
+                </Descriptions.Item>
+              ) : null}
+
+              {isFieldVisible("Customers", "billing_address") ? (
+                <Descriptions.Item label="Billing Address">
+                  {customer.billing_address || "-"}
+                </Descriptions.Item>
+              ) : null}
             </Descriptions>
           )}
         </Card>
 
-        <Card
-          title="Cases"
-          extra={
-            <Button type="primary" size="small" onClick={openCaseModal}>
-              New
-            </Button>
-          }
-          style={{ position: "sticky", top: 24 }}
-          loading={casesLoading}
-        >
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1.2fr 2fr 1fr",
-              padding: "8px 12px",
-              background: "#fafafa",
-              border: "1px solid #f0f0f0",
-              borderBottom: "none",
-              fontWeight: 600,
-              fontSize: 13,
-            }}
+        {canViewCases ? (
+          <Card
+            title="Cases"
+            extra={
+              canCreateCases ? (
+                <Button type="primary" size="small" onClick={openCaseModal}>
+                  New
+                </Button>
+              ) : null
+            }
+            style={{ position: "sticky", top: 24 }}
+            loading={casesLoading}
           >
-            <div>Case Number</div>
-            <div>Subject</div>
-            <div>Status</div>
-          </div>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1.2fr 2fr 1fr",
+                padding: "8px 12px",
+                background: "#fafafa",
+                border: "1px solid #f0f0f0",
+                borderBottom: "none",
+                fontWeight: 600,
+                fontSize: 13,
+              }}
+            >
+              <div>Case Number</div>
+              <div>Subject</div>
+              <div>Status</div>
+            </div>
 
-          <div
-            style={{
-              border: "1px solid #f0f0f0",
-              borderTop: "none",
-            }}
-          >
-            {customerCases.length === 0 ? (
-              <div style={{ padding: 12, color: "#666" }}>
-                No related cases found
-              </div>
-            ) : (
-              customerCases.map((caseItem, index) => (
-                <div
-                  key={caseItem.id}
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "1.2fr 2fr 1fr",
-                    padding: "10px 12px",
-                    borderBottom:
-                      index !== customerCases.length - 1
-                        ? "1px solid #f5f5f5"
-                        : "none",
-                    alignItems: "center",
-                    fontSize: 13,
-                  }}
-                >
-                  <div>
-                    <Link
-                      to={`/cases/${caseItem.id}`}
-                      style={{
-                        color: "#1677ff",
-                        fontWeight: 500,
-                      }}
-                    >
-                      {caseItem.case_number}
-                    </Link>
-                  </div>
-
-                  <div
-                    style={{
-                      color: "#333",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                    title={caseItem.subject || "-"}
-                  >
-                    {caseItem.subject || "-"}
-                  </div>
-
-                  <div>
-                    <span
-                      style={{
-                        padding: "2px 8px",
-                        borderRadius: 12,
-                        fontSize: 12,
-                        background:
-                          caseItem.status === "Closed"
-                            ? "#f6ffed"
-                            : caseItem.status === "In Progress"
-                            ? "#e6f4ff"
-                            : "#fff7e6",
-                        color:
-                          caseItem.status === "Closed"
-                            ? "#389e0d"
-                            : caseItem.status === "In Progress"
-                            ? "#1677ff"
-                            : "#d48806",
-                      }}
-                    >
-                      {caseItem.status}
-                    </span>
-                  </div>
+            <div
+              style={{
+                border: "1px solid #f0f0f0",
+                borderTop: "none",
+              }}
+            >
+              {customerCases.length === 0 ? (
+                <div style={{ padding: 12, color: "#666" }}>
+                  No related cases found
                 </div>
-              ))
-            )}
-          </div>
-        </Card>
+              ) : (
+                customerCases.map((caseItem, index) => (
+                  <div
+                    key={caseItem.id}
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1.2fr 2fr 1fr",
+                      padding: "10px 12px",
+                      borderBottom:
+                        index !== customerCases.length - 1
+                          ? "1px solid #f5f5f5"
+                          : "none",
+                      alignItems: "center",
+                      fontSize: 13,
+                    }}
+                  >
+                    <div>
+                      <Link
+                        to={`/cases/${caseItem.id}`}
+                        style={{
+                          color: "#1677ff",
+                          fontWeight: 500,
+                        }}
+                      >
+                        {caseItem.case_number}
+                      </Link>
+                    </div>
+
+                    <div
+                      style={{
+                        color: "#333",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                      title={caseItem.subject || "-"}
+                    >
+                      {caseItem.subject || "-"}
+                    </div>
+
+                    <div>
+                      <span
+                        style={{
+                          padding: "2px 8px",
+                          borderRadius: 12,
+                          fontSize: 12,
+                          background:
+                            caseItem.status === "Closed"
+                              ? "#f6ffed"
+                              : caseItem.status === "In Progress"
+                              ? "#e6f4ff"
+                              : "#fff7e6",
+                          color:
+                            caseItem.status === "Closed"
+                              ? "#389e0d"
+                              : caseItem.status === "In Progress"
+                              ? "#1677ff"
+                              : "#d48806",
+                        }}
+                      >
+                        {caseItem.status}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </Card>
+        ) : null}
       </div>
 
       <Modal
@@ -391,68 +452,88 @@ export default function CustomerRecord() {
         width={700}
         destroyOnClose
       >
-        <Form
-          form={customerForm}
-          layout="vertical"
-          onFinish={handleUpdate}
-        >
-          <Form.Item name="salutation" label="Salutation">
-            <Input />
-          </Form.Item>
+        <Form form={customerForm} layout="vertical" onFinish={handleUpdate}>
+          {isFieldVisible("Customers", "salutation") ? (
+            <Form.Item name="salutation" label="Salutation">
+              <Input disabled={isFieldReadOnly("Customers", "salutation")} />
+            </Form.Item>
+          ) : null}
 
-          <Form.Item
-            name="first_name"
-            label="First name"
-            rules={[{ required: true, message: "Please enter first name" }]}
-          >
-            <Input />
-          </Form.Item>
+          {isFieldVisible("Customers", "first_name") ? (
+            <Form.Item
+              name="first_name"
+              label="First name"
+              rules={[{ required: true, message: "Please enter first name" }]}
+            >
+              <Input disabled={isFieldReadOnly("Customers", "first_name")} />
+            </Form.Item>
+          ) : null}
 
-          <Form.Item name="middle_name" label="Middle name">
-            <Input />
-          </Form.Item>
+          {isFieldVisible("Customers", "middle_name") ? (
+            <Form.Item name="middle_name" label="Middle name">
+              <Input disabled={isFieldReadOnly("Customers", "middle_name")} />
+            </Form.Item>
+          ) : null}
 
-          <Form.Item
-            name="last_name"
-            label="Last name"
-            rules={[{ required: true, message: "Please enter last name" }]}
-          >
-            <Input />
-          </Form.Item>
+          {isFieldVisible("Customers", "last_name") ? (
+            <Form.Item
+              name="last_name"
+              label="Last name"
+              rules={[{ required: true, message: "Please enter last name" }]}
+            >
+              <Input disabled={isFieldReadOnly("Customers", "last_name")} />
+            </Form.Item>
+          ) : null}
 
-          <Form.Item
-            name="email"
-            label="Email"
-            rules={[
-              { required: true, message: "Please enter email" },
-              { type: "email", message: "Please enter a valid email" },
-            ]}
-          >
-            <Input />
-          </Form.Item>
+          {isFieldVisible("Customers", "email") ? (
+            <Form.Item
+              name="email"
+              label="Email"
+              rules={[
+                { required: true, message: "Please enter email" },
+                { type: "email", message: "Please enter a valid email" },
+              ]}
+            >
+              <Input disabled={isFieldReadOnly("Customers", "email")} />
+            </Form.Item>
+          ) : null}
 
-          <Form.Item
-            name="phone"
-            label="Phone"
-            rules={[{ required: true, message: "Please enter phone" }]}
-          >
-            <Input />
-          </Form.Item>
+          {isFieldVisible("Customers", "phone") ? (
+            <Form.Item
+              name="phone"
+              label="Phone"
+              rules={[{ required: true, message: "Please enter phone" }]}
+            >
+              <Input disabled={isFieldReadOnly("Customers", "phone")} />
+            </Form.Item>
+          ) : null}
 
-          <Form.Item name="shipping_address" label="Shipping address">
-            <Input.TextArea rows={3} />
-          </Form.Item>
+          {isFieldVisible("Customers", "shipping_address") ? (
+            <Form.Item name="shipping_address" label="Shipping address">
+              <Input.TextArea
+                rows={3}
+                disabled={isFieldReadOnly("Customers", "shipping_address")}
+              />
+            </Form.Item>
+          ) : null}
 
-          <Form.Item name="billing_address" label="Billing address">
-            <Input.TextArea rows={3} />
-          </Form.Item>
+          {isFieldVisible("Customers", "billing_address") ? (
+            <Form.Item name="billing_address" label="Billing address">
+              <Input.TextArea
+                rows={3}
+                disabled={isFieldReadOnly("Customers", "billing_address")}
+              />
+            </Form.Item>
+          ) : null}
 
           <Form.Item style={{ marginBottom: 0 }}>
             <Space style={{ width: "100%", justifyContent: "flex-end" }}>
               <Button onClick={closeEditModal}>Cancel</Button>
-              <Button type="primary" htmlType="submit" loading={isSaving}>
-                Save
-              </Button>
+              {canEditCustomers ? (
+                <Button type="primary" htmlType="submit" loading={isSaving}>
+                  Save
+                </Button>
+              ) : null}
             </Space>
           </Form.Item>
         </Form>

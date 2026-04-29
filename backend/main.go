@@ -28,7 +28,21 @@ func main() {
 	config.ConnectDB()
 
 	// Auto migrate models
+<<<<<<< HEAD
 	config.DB.AutoMigrate(&models.User{}, &models.Customer{}, &models.Case{}, &models.Queue{}, &models.CompanyInformation{}, &models.RecentlyViewed{}, &models.Role{})
+=======
+	config.DB.AutoMigrate(
+		&models.User{},
+		&models.Customer{},
+		&models.Case{},
+		&models.Queue{},
+		&models.CompanyInformation{},
+		&models.Role{},
+		&models.Profile{},
+		&models.ObjectPermission{},
+		&models.FieldPermission{},
+	)
+>>>>>>> ad7fbb6 (Complete US-15: profile access with object and field-level security)
 
 	// Setup routes
 	routes.SetupRoutes(r)

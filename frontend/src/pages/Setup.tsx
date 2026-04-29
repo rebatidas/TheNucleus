@@ -28,10 +28,15 @@ import {
 import { Navigate, useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import SetupRolesSection from "../components/SetupRolesSection";
+<<<<<<< HEAD
+=======
+import SetupProfilesSection from "../components/SetupProfilesSection";
+import { usePermissions } from "../hooks/usePermissions";
+>>>>>>> ad7fbb6 (Complete US-15: profile access with object and field-level security)
 
-const { Title, Text } = Typography;
+const { Title } = Typography;
 
-type SetupSection = "users" | "roles" | "company" | null;
+type SetupSection = "users" | "roles" | "company" | "profiles" | null;
 
 type UserRecord = {
   ID: number;
@@ -42,6 +47,10 @@ type UserRecord = {
   email: string;
   created_at?: string;
   role_id?: number | null;
+<<<<<<< HEAD
+=======
+  profile_id?: number | null;
+>>>>>>> ad7fbb6 (Complete US-15: profile access with object and field-level security)
 };
 
 type RoleRecord = {
@@ -49,6 +58,15 @@ type RoleRecord = {
   label: string;
   role_name: string;
   reports_to_id?: number | null;
+<<<<<<< HEAD
+=======
+};
+
+type ProfileRecord = {
+  ID: number;
+  name: string;
+  description?: string;
+>>>>>>> ad7fbb6 (Complete US-15: profile access with object and field-level security)
 };
 
 type CompanyInformation = {
@@ -69,6 +87,10 @@ type UserFormValues = {
   username?: string;
   email: string;
   role_id?: number | null;
+<<<<<<< HEAD
+=======
+  profile_id?: number | null;
+>>>>>>> ad7fbb6 (Complete US-15: profile access with object and field-level security)
 };
 
 export default function Setup() {
@@ -85,6 +107,12 @@ export default function Setup() {
   const [roles, setRoles] = useState<RoleRecord[]>([]);
   const [rolesLoading, setRolesLoading] = useState(false);
 
+<<<<<<< HEAD
+=======
+  const [profiles, setProfiles] = useState<ProfileRecord[]>([]);
+  const [profilesLoading, setProfilesLoading] = useState(false);
+
+>>>>>>> ad7fbb6 (Complete US-15: profile access with object and field-level security)
   const [companyInfo, setCompanyInfo] = useState<CompanyInformation | null>(
     null
   );
@@ -99,6 +127,12 @@ export default function Setup() {
 
   const navigate = useNavigate();
 
+  const {
+    canViewObject,
+    isFieldVisible,
+    isFieldReadOnly,
+  } = usePermissions();
+
   const token = localStorage.getItem("token");
   if (!token) {
     return <Navigate to="/login" replace />;
@@ -106,7 +140,7 @@ export default function Setup() {
 
   const storedUser = localStorage.getItem("user");
   const user = storedUser ? JSON.parse(storedUser) : null;
-  const userName = user?.name || "User";
+  const userName = user?.first_name || user?.name || "User";
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -136,14 +170,15 @@ export default function Setup() {
     }
   };
 
-  const items: MenuProps["items"] = useMemo(
-    () => [
-      { key: "users", icon: <UserOutlined />, label: "Users" },
-      { key: "roles", icon: <ApartmentOutlined />, label: "Roles" },
-      { key: "company", icon: <BankOutlined />, label: "Company Information" },
-    ],
-    []
-  );
+ const items: MenuProps["items"] = useMemo(
+  () => [
+    { key: "users", icon: <UserOutlined />, label: "Users" },
+    { key: "roles", icon: <ApartmentOutlined />, label: "Roles" },
+    { key: "profiles", icon: <UserOutlined />, label: "Profiles" },
+    { key: "company", icon: <BankOutlined />, label: "Company Information" },
+  ],
+  []
+);
 
   const filteredItems =
     items?.filter((item) =>
@@ -177,6 +212,21 @@ export default function Setup() {
     }
   };
 
+<<<<<<< HEAD
+=======
+  const fetchProfiles = async () => {
+    try {
+      setProfilesLoading(true);
+      const response = await api.get("/api/profiles");
+      setProfiles(response.data?.data ?? []);
+    } catch {
+      setProfiles([]);
+    } finally {
+      setProfilesLoading(false);
+    }
+  };
+
+>>>>>>> ad7fbb6 (Complete US-15: profile access with object and field-level security)
   const fetchCompanyInformation = async () => {
     try {
       setCompanyLoading(true);
@@ -209,6 +259,10 @@ export default function Setup() {
     if (selectedKey === "users") {
       fetchUsers();
       fetchRoles();
+<<<<<<< HEAD
+=======
+      fetchProfiles();
+>>>>>>> ad7fbb6 (Complete US-15: profile access with object and field-level security)
     }
 
     if (selectedKey === "roles") {
@@ -220,6 +274,12 @@ export default function Setup() {
     }
   }, [selectedKey]);
 
+  useEffect(() => {
+    if (selectedKey && !filteredItems.some((item) => item?.key === selectedKey)) {
+      setSelectedKey(null);
+    }
+  }, [filteredItems, selectedKey]);
+
   const openUserModal = (record: UserRecord) => {
     setSelectedUser(record);
     userForm.setFieldsValue({
@@ -228,6 +288,10 @@ export default function Setup() {
       username: record.username || "",
       email: record.email || "",
       role_id: record.role_id ?? undefined,
+<<<<<<< HEAD
+=======
+      profile_id: record.profile_id ?? undefined,
+>>>>>>> ad7fbb6 (Complete US-15: profile access with object and field-level security)
     });
     setIsUserModalOpen(true);
   };
@@ -247,6 +311,10 @@ export default function Setup() {
       await api.put(`/api/users/${selectedUser.ID}`, {
         ...values,
         role_id: values.role_id ?? null,
+<<<<<<< HEAD
+=======
+        profile_id: values.profile_id ?? null,
+>>>>>>> ad7fbb6 (Complete US-15: profile access with object and field-level security)
       });
 
       messageApi.success("User updated successfully");
@@ -290,6 +358,15 @@ export default function Setup() {
     return role?.label || "-";
   };
 
+<<<<<<< HEAD
+=======
+  const getProfileName = (profileId?: number | null) => {
+    if (!profileId) return "-";
+    const profile = profiles.find((item) => item.ID === profileId);
+    return profile?.name || "-";
+  };
+
+>>>>>>> ad7fbb6 (Complete US-15: profile access with object and field-level security)
   const userColumns: ColumnsType<UserRecord> = [
     {
       title: "Name",
@@ -299,17 +376,45 @@ export default function Setup() {
         record.name ||
         "-",
     },
-    {
-      title: "Username",
-      dataIndex: "username",
-      key: "username",
-      render: (value) => value || "-",
-    },
-    {
-      title: "Email",
-      dataIndex: "email",
-      key: "email",
-    },
+    ...(isFieldVisible("Users", "username")
+      ? [
+          {
+            title: "Username",
+            dataIndex: "username",
+            key: "username",
+            render: (value: string) => value || "-",
+          },
+        ]
+      : []),
+    ...(isFieldVisible("Users", "email")
+      ? [
+          {
+            title: "Email",
+            dataIndex: "email",
+            key: "email",
+          },
+        ]
+      : []),
+    ...(isFieldVisible("Users", "role_id")
+      ? [
+          {
+            title: "Role",
+            key: "role",
+            render: (_: unknown, record: UserRecord) =>
+              getRoleLabel(record.role_id),
+          },
+        ]
+      : []),
+    ...(isFieldVisible("Users", "profile_id")
+      ? [
+          {
+            title: "Profile",
+            key: "profile",
+            render: (_: unknown, record: UserRecord) =>
+              getProfileName(record.profile_id),
+          },
+        ]
+      : []),
     {
       title: "Role",
       key: "role",
@@ -383,28 +488,66 @@ export default function Setup() {
           destroyOnClose
         >
           <Form form={userForm} layout="vertical" onFinish={handleUserSave}>
-            <Form.Item name="first_name" label="First Name">
-              <Input />
-            </Form.Item>
+            {isFieldVisible("Users", "first_name") ? (
+              <Form.Item name="first_name" label="First Name">
+                <Input disabled={isFieldReadOnly("Users", "first_name")} />
+              </Form.Item>
+            ) : null}
 
-            <Form.Item name="last_name" label="Last Name">
-              <Input />
-            </Form.Item>
+            {isFieldVisible("Users", "last_name") ? (
+              <Form.Item name="last_name" label="Last Name">
+                <Input disabled={isFieldReadOnly("Users", "last_name")} />
+              </Form.Item>
+            ) : null}
 
-            <Form.Item name="username" label="Username">
-              <Input />
-            </Form.Item>
+            {isFieldVisible("Users", "username") ? (
+              <Form.Item name="username" label="Username">
+                <Input disabled={isFieldReadOnly("Users", "username")} />
+              </Form.Item>
+            ) : null}
 
-            <Form.Item
-              name="email"
-              label="Email"
-              rules={[
-                { required: true, message: "Please enter email" },
-                { type: "email", message: "Please enter a valid email" },
-              ]}
-            >
-              <Input />
-            </Form.Item>
+            {isFieldVisible("Users", "email") ? (
+              <Form.Item
+                name="email"
+                label="Email"
+                rules={[
+                  { required: true, message: "Please enter email" },
+                  { type: "email", message: "Please enter a valid email" },
+                ]}
+              >
+                <Input disabled={isFieldReadOnly("Users", "email")} />
+              </Form.Item>
+            ) : null}
+
+            {isFieldVisible("Users", "role_id") ? (
+              <Form.Item name="role_id" label="Role">
+                <Select
+                  allowClear
+                  placeholder="Select role"
+                  loading={rolesLoading}
+                  disabled={isFieldReadOnly("Users", "role_id")}
+                  options={roles.map((role) => ({
+                    label: role.label,
+                    value: role.ID,
+                  }))}
+                />
+              </Form.Item>
+            ) : null}
+
+            {isFieldVisible("Users", "profile_id") ? (
+              <Form.Item name="profile_id" label="Profile">
+                <Select
+                  allowClear
+                  placeholder="Select profile"
+                  loading={profilesLoading}
+                  disabled={isFieldReadOnly("Users", "profile_id")}
+                  options={profiles.map((profile) => ({
+                    label: profile.name,
+                    value: profile.ID,
+                  }))}
+                />
+              </Form.Item>
+            ) : null}
 
             <Form.Item name="role_id" label="Role">
               <Select
@@ -452,6 +595,7 @@ export default function Setup() {
         </Title>
 
         <Form form={companyForm} layout="vertical" onFinish={handleCompanySave}>
+<<<<<<< HEAD
           <Form.Item
             name="organization_name"
             label="Organization Name"
@@ -461,34 +605,101 @@ export default function Setup() {
           >
             <Input disabled={!!companyInfo && !isEditingCompany} />
           </Form.Item>
+=======
+          {isFieldVisible("Company Information", "organization_name") ? (
+            <Form.Item
+              name="organization_name"
+              label="Organization Name"
+              rules={[
+                { required: true, message: "Please enter Organization Name" },
+              ]}
+            >
+              <Input
+                disabled={
+                  isFieldReadOnly("Company Information", "organization_name") ||
+                  (!!companyInfo && !isEditingCompany)
+                }
+              />
+            </Form.Item>
+          ) : null}
+>>>>>>> ad7fbb6 (Complete US-15: profile access with object and field-level security)
 
-          <Form.Item name="website" label="Website">
-            <Input disabled={!!companyInfo && !isEditingCompany} />
-          </Form.Item>
+          {isFieldVisible("Company Information", "website") ? (
+            <Form.Item name="website" label="Website">
+              <Input
+                disabled={
+                  isFieldReadOnly("Company Information", "website") ||
+                  (!!companyInfo && !isEditingCompany)
+                }
+              />
+            </Form.Item>
+          ) : null}
 
-          <Form.Item name="phone" label="Phone">
-            <Input disabled={!!companyInfo && !isEditingCompany} />
-          </Form.Item>
+          {isFieldVisible("Company Information", "phone") ? (
+            <Form.Item name="phone" label="Phone">
+              <Input
+                disabled={
+                  isFieldReadOnly("Company Information", "phone") ||
+                  (!!companyInfo && !isEditingCompany)
+                }
+              />
+            </Form.Item>
+          ) : null}
 
-          <Form.Item name="street" label="Street">
-            <Input disabled={!!companyInfo && !isEditingCompany} />
-          </Form.Item>
+          {isFieldVisible("Company Information", "street") ? (
+            <Form.Item name="street" label="Street">
+              <Input
+                disabled={
+                  isFieldReadOnly("Company Information", "street") ||
+                  (!!companyInfo && !isEditingCompany)
+                }
+              />
+            </Form.Item>
+          ) : null}
 
-          <Form.Item name="city" label="City">
-            <Input disabled={!!companyInfo && !isEditingCompany} />
-          </Form.Item>
+          {isFieldVisible("Company Information", "city") ? (
+            <Form.Item name="city" label="City">
+              <Input
+                disabled={
+                  isFieldReadOnly("Company Information", "city") ||
+                  (!!companyInfo && !isEditingCompany)
+                }
+              />
+            </Form.Item>
+          ) : null}
 
-          <Form.Item name="state" label="State">
-            <Input disabled={!!companyInfo && !isEditingCompany} />
-          </Form.Item>
+          {isFieldVisible("Company Information", "state") ? (
+            <Form.Item name="state" label="State">
+              <Input
+                disabled={
+                  isFieldReadOnly("Company Information", "state") ||
+                  (!!companyInfo && !isEditingCompany)
+                }
+              />
+            </Form.Item>
+          ) : null}
 
-          <Form.Item name="postal_code" label="Postal Code">
-            <Input disabled={!!companyInfo && !isEditingCompany} />
-          </Form.Item>
+          {isFieldVisible("Company Information", "postal_code") ? (
+            <Form.Item name="postal_code" label="Postal Code">
+              <Input
+                disabled={
+                  isFieldReadOnly("Company Information", "postal_code") ||
+                  (!!companyInfo && !isEditingCompany)
+                }
+              />
+            </Form.Item>
+          ) : null}
 
-          <Form.Item name="country" label="Country">
-            <Input disabled={!!companyInfo && !isEditingCompany} />
-          </Form.Item>
+          {isFieldVisible("Company Information", "country") ? (
+            <Form.Item name="country" label="Country">
+              <Input
+                disabled={
+                  isFieldReadOnly("Company Information", "country") ||
+                  (!!companyInfo && !isEditingCompany)
+                }
+              />
+            </Form.Item>
+          ) : null}
 
           <Form.Item style={{ marginBottom: 0 }}>
             <Space style={{ width: "100%", justifyContent: "flex-end" }}>
@@ -531,6 +742,12 @@ export default function Setup() {
       case "roles":
         return <SetupRolesSection companyInfo={companyInfo} />;
 
+<<<<<<< HEAD
+=======
+      case "profiles":
+        return <SetupProfilesSection />;
+
+>>>>>>> ad7fbb6 (Complete US-15: profile access with object and field-level security)
       case "company":
         return renderCompanySection();
 

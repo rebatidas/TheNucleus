@@ -14,6 +14,7 @@ import {
 import { Link, useNavigate, useParams } from "react-router-dom";
 import AppLayout from "../components/AppLayout";
 import { api } from "../api/client";
+import { usePermissions } from "../hooks/usePermissions";
 
 type Customer = {
   ID: number;
@@ -70,6 +71,18 @@ export default function CaseRecord() {
   const [form] = Form.useForm<CaseFormValues>();
   const [messageApi, contextHolder] = message.useMessage();
 
+  const {
+    canViewObject,
+    canEditObject,
+    canDeleteObject,
+    isFieldVisible,
+    isFieldReadOnly,
+  } = usePermissions();
+
+  const canViewCases = canViewObject("Cases");
+  const canEditCases = canEditObject("Cases");
+  const canDeleteCases = canDeleteObject("Cases");
+
   const fetchCase = async () => {
     try {
       setLoading(true);
@@ -94,10 +107,10 @@ export default function CaseRecord() {
   };
 
   useEffect(() => {
-    if (!id) return;
+    if (!id || !canViewCases) return;
     fetchCase();
     fetchCustomers();
-  }, [id]);
+  }, [id, canViewCases]);
 
   const openEditModal = () => {
     if (!caseRecord) return;
@@ -158,6 +171,15 @@ export default function CaseRecord() {
       .join(" ");
   };
 
+  if (!canViewCases) {
+    return (
+      <AppLayout title="Cases">
+        {contextHolder}
+        <div style={{ padding: 24 }}>You do not have access to this record.</div>
+      </AppLayout>
+    );
+  }
+
   return (
     <AppLayout title="Cases">
       {contextHolder}
@@ -167,52 +189,69 @@ export default function CaseRecord() {
         title={caseRecord?.case_number || "Case Record"}
         extra={
           <Space>
-            <Button onClick={openEditModal}>Edit</Button>
-            <Popconfirm
-              title="Delete case"
-              description="Are you sure you want to delete this case?"
-              onConfirm={handleDelete}
-              okText="Yes"
-              cancelText="No"
-            >
-              <Button danger loading={isDeleting}>
-                Delete
-              </Button>
-            </Popconfirm>
+            {canEditCases ? (
+              <Button onClick={openEditModal}>Edit</Button>
+            ) : null}
+
+            {canDeleteCases ? (
+              <Popconfirm
+                title="Delete case"
+                description="Are you sure you want to delete this case?"
+                onConfirm={handleDelete}
+                okText="Yes"
+                cancelText="No"
+              >
+                <Button danger loading={isDeleting}>
+                  Delete
+                </Button>
+              </Popconfirm>
+            ) : null}
           </Space>
         }
       >
         {caseRecord && (
           <Descriptions column={1} bordered>
-            <Descriptions.Item label="Case Number">
-              {caseRecord.case_number}
-            </Descriptions.Item>
+            {isFieldVisible("Cases", "case_number") ? (
+              <Descriptions.Item label="Case Number">
+                {caseRecord.case_number || "-"}
+              </Descriptions.Item>
+            ) : null}
 
-            <Descriptions.Item label="Status">
-              {caseRecord.status || "-"}
-            </Descriptions.Item>
+            {isFieldVisible("Cases", "status") ? (
+              <Descriptions.Item label="Status">
+                {caseRecord.status || "-"}
+              </Descriptions.Item>
+            ) : null}
 
-            <Descriptions.Item label="Subject">
-              {caseRecord.subject || "-"}
-            </Descriptions.Item>
+            {isFieldVisible("Cases", "subject") ? (
+              <Descriptions.Item label="Subject">
+                {caseRecord.subject || "-"}
+              </Descriptions.Item>
+            ) : null}
 
-            <Descriptions.Item label="Description">
-              {caseRecord.description || "-"}
-            </Descriptions.Item>
+            {isFieldVisible("Cases", "description") ? (
+              <Descriptions.Item label="Description">
+                {caseRecord.description || "-"}
+              </Descriptions.Item>
+            ) : null}
 
-            <Descriptions.Item label="Customer Name">
-              {caseRecord.customer ? (
-                <Link to={`/customers/${caseRecord.customer.ID}`}>
-                  {getCustomerName()}
-                </Link>
-              ) : (
-                "-"
-              )}
-            </Descriptions.Item>
+            {isFieldVisible("Cases", "customer_id") ? (
+              <Descriptions.Item label="Customer Name">
+                {caseRecord.customer ? (
+                  <Link to={`/customers/${caseRecord.customer.ID}`}>
+                    {getCustomerName()}
+                  </Link>
+                ) : (
+                  "-"
+                )}
+              </Descriptions.Item>
+            ) : null}
 
-            <Descriptions.Item label="Resolution">
-              {caseRecord.resolution || "-"}
-            </Descriptions.Item>
+            {isFieldVisible("Cases", "resolution") ? (
+              <Descriptions.Item label="Resolution">
+                {caseRecord.resolution || "-"}
+              </Descriptions.Item>
+            ) : null}
 
             <Descriptions.Item label="Created Date">
               {caseRecord.created_date
@@ -238,54 +277,74 @@ export default function CaseRecord() {
         destroyOnClose
       >
         <Form form={form} layout="vertical" onFinish={handleUpdate}>
-          <Form.Item name="customer_id" label="Customer Name">
-            <Select
-              options={customers.map((customer) => ({
-                label: [
-                  customer.salutation,
-                  customer.first_name,
-                  customer.middle_name,
-                  customer.last_name,
-                ]
-                  .filter(Boolean)
-                  .join(" "),
-                value: customer.ID,
-              }))}
-            />
-          </Form.Item>
+          {isFieldVisible("Cases", "customer_id") ? (
+            <Form.Item name="customer_id" label="Customer Name">
+              <Select
+                disabled={isFieldReadOnly("Cases", "customer_id")}
+                options={customers.map((customer) => ({
+                  label: [
+                    customer.salutation,
+                    customer.first_name,
+                    customer.middle_name,
+                    customer.last_name,
+                  ]
+                    .filter(Boolean)
+                    .join(" "),
+                  value: customer.ID,
+                }))}
+              />
+            </Form.Item>
+          ) : null}
 
-          <Form.Item name="status" label="Status">
-            <Select
-              options={[
-                { label: "New", value: "New" },
-                { label: "In Progress", value: "In Progress" },
-                { label: "Closed", value: "Closed" },
-              ]}
-            />
-          </Form.Item>
+          {isFieldVisible("Cases", "status") ? (
+            <Form.Item name="status" label="Status">
+              <Select
+                disabled={isFieldReadOnly("Cases", "status")}
+                options={[
+                  { label: "New", value: "New" },
+                  { label: "In Progress", value: "In Progress" },
+                  { label: "Closed", value: "Closed" },
+                ]}
+              />
+            </Form.Item>
+          ) : null}
 
-          <Form.Item
-            name="subject"
-            label="Subject"
-            rules={[{ required: true, message: "Please enter subject" }]}
-          >
-            <Input />
-          </Form.Item>
+          {isFieldVisible("Cases", "subject") ? (
+            <Form.Item
+              name="subject"
+              label="Subject"
+              rules={[{ required: true, message: "Please enter subject" }]}
+            >
+              <Input disabled={isFieldReadOnly("Cases", "subject")} />
+            </Form.Item>
+          ) : null}
 
-          <Form.Item name="description" label="Description">
-            <Input.TextArea rows={4} />
-          </Form.Item>
+          {isFieldVisible("Cases", "description") ? (
+            <Form.Item name="description" label="Description">
+              <Input.TextArea
+                rows={4}
+                disabled={isFieldReadOnly("Cases", "description")}
+              />
+            </Form.Item>
+          ) : null}
 
-          <Form.Item name="resolution" label="Resolution">
-            <Input.TextArea rows={3} />
-          </Form.Item>
+          {isFieldVisible("Cases", "resolution") ? (
+            <Form.Item name="resolution" label="Resolution">
+              <Input.TextArea
+                rows={3}
+                disabled={isFieldReadOnly("Cases", "resolution")}
+              />
+            </Form.Item>
+          ) : null}
 
           <Form.Item style={{ marginBottom: 0 }}>
             <Space style={{ width: "100%", justifyContent: "flex-end" }}>
               <Button onClick={closeEditModal}>Cancel</Button>
-              <Button type="primary" htmlType="submit" loading={isSaving}>
-                Save
-              </Button>
+              {canEditCases ? (
+                <Button type="primary" htmlType="submit" loading={isSaving}>
+                  Save
+                </Button>
+              ) : null}
             </Space>
           </Form.Item>
         </Form>

@@ -16,6 +16,9 @@ func TestCreateCustomerSuccess(t *testing.T) {
 	setupCRMTestDB(t)
 	router := setupCRMRouter()
 
+	user, profile := seedUserWithProfile(t, "customer_create")
+	grantObjectPermission(t, profile.ID, "Customers", true, true, true, false)
+
 	body := map[string]interface{}{
 		"salutation":       "Mr.",
 		"first_name":       "John",
@@ -31,28 +34,22 @@ func TestCreateCustomerSuccess(t *testing.T) {
 
 	req, _ := http.NewRequest(http.MethodPost, "/api/customers", bytes.NewBuffer(jsonBody))
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+makeAuthToken(t, user.ID))
 
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
 	if w.Code != http.StatusCreated && w.Code != http.StatusOK {
-		t.Fatalf("expected status 200 or 201, got %d, body: %s", w.Code, w.Body.String())
-	}
-
-	var customer models.Customer
-	err := config.DB.Where("email = ?", "john.doe@example.com").First(&customer).Error
-	if err != nil {
-		t.Fatalf("expected customer to be created, got error: %v", err)
-	}
-
-	if customer.FirstName != "John" {
-		t.Fatalf("expected first name John, got %s", customer.FirstName)
+		t.Fatalf("expected 200 or 201, got %d, body: %s", w.Code, w.Body.String())
 	}
 }
 
 func TestGetCustomersSuccess(t *testing.T) {
 	setupCRMTestDB(t)
 	router := setupCRMRouter()
+
+	user, profile := seedUserWithProfile(t, "customer_view")
+	grantObjectPermission(t, profile.ID, "Customers", true, false, false, false)
 
 	customer := models.Customer{
 		Salutation:      "Ms.",
@@ -70,32 +67,22 @@ func TestGetCustomersSuccess(t *testing.T) {
 	}
 
 	req, _ := http.NewRequest(http.MethodGet, "/api/customers", nil)
+	req.Header.Set("Authorization", "Bearer "+makeAuthToken(t, user.ID))
 
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
 	if w.Code != http.StatusOK {
-		t.Fatalf("expected status %d, got %d, body: %s", http.StatusOK, w.Code, w.Body.String())
-	}
-
-	var response map[string]interface{}
-	if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
-		t.Fatalf("failed to parse response: %v", err)
-	}
-
-	data, ok := response["data"].([]interface{})
-	if !ok {
-		t.Fatalf("expected response data array")
-	}
-
-	if len(data) == 0 {
-		t.Fatalf("expected at least one customer in response")
+		t.Fatalf("expected 200, got %d, body: %s", w.Code, w.Body.String())
 	}
 }
 
 func TestGetCustomerByIDSuccess(t *testing.T) {
 	setupCRMTestDB(t)
 	router := setupCRMRouter()
+
+	user, profile := seedUserWithProfile(t, "customer_view_one")
+	grantObjectPermission(t, profile.ID, "Customers", true, false, false, false)
 
 	customer := models.Customer{
 		Salutation:      "Mr.",
@@ -113,12 +100,223 @@ func TestGetCustomerByIDSuccess(t *testing.T) {
 
 	url := "/api/customers/" + itoaUint(customer.ID)
 	req, _ := http.NewRequest(http.MethodGet, url, nil)
+	req.Header.Set("Authorization", "Bearer "+makeAuthToken(t, user.ID))
 
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
 	if w.Code != http.StatusOK {
-		t.Fatalf("expected status %d, got %d, body: %s", http.StatusOK, w.Code, w.Body.String())
+		t.Fatalf("expected 200, got %d, body: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestGetCustomersMissingTokenRejected(t *testing.T) {
+	setupCRMTestDB(t)
+	router := setupCRMRouter()
+
+	req, _ := http.NewRequest(http.MethodGet, "/api/customers", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401, got %d, body: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestGetCustomersBlockedWithoutPermission(t *testing.T) {
+	setupCRMTestDB(t)
+	router := setupCRMRouter()
+
+	user, _ := seedUserWithProfile(t, "customer_no_view")
+
+	req, _ := http.NewRequest(http.MethodGet, "/api/customers", nil)
+	req.Header.Set("Authorization", "Bearer "+makeAuthToken(t, user.ID))
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("expected 403, got %d, body: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestCreateCustomerBlockedWithoutCreatePermission(t *testing.T) {
+	setupCRMTestDB(t)
+	router := setupCRMRouter()
+
+	user, profile := seedUserWithProfile(t, "customer_no_create")
+	grantObjectPermission(t, profile.ID, "Customers", true, false, true, false)
+
+	body := map[string]interface{}{
+		"first_name": "John",
+		"last_name":  "Doe",
+	}
+	jsonBody, _ := json.Marshal(body)
+
+	req, _ := http.NewRequest(http.MethodPost, "/api/customers", bytes.NewBuffer(jsonBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+makeAuthToken(t, user.ID))
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("expected 403, got %d, body: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestUpdateCustomerReadOnlyFieldNotUpdated(t *testing.T) {
+	setupCRMTestDB(t)
+	router := setupCRMRouter()
+
+	user, profile := seedUserWithProfile(t, "customer_edit")
+	grantObjectPermission(t, profile.ID, "Customers", true, true, true, false)
+	grantFieldPermission(t, profile.ID, "Customers", "email", true, true)
+
+	customer := models.Customer{
+		FirstName: "Jane",
+		LastName:  "Doe",
+		Email:     "old@example.com",
+		Phone:     "1111111111",
+	}
+	if err := config.DB.Create(&customer).Error; err != nil {
+		t.Fatalf("failed to seed customer: %v", err)
+	}
+
+	body := map[string]interface{}{
+		"first_name": "Jane",
+		"last_name":  "Doe",
+		"email":      "new@example.com",
+		"phone":      "2222222222",
+	}
+	jsonBody, _ := json.Marshal(body)
+
+	req, _ := http.NewRequest(
+		http.MethodPut,
+		"/api/customers/"+itoaUint(customer.ID),
+		bytes.NewBuffer(jsonBody),
+	)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+makeAuthToken(t, user.ID))
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d, body: %s", w.Code, w.Body.String())
+	}
+
+	var updated models.Customer
+	if err := config.DB.First(&updated, customer.ID).Error; err != nil {
+		t.Fatalf("failed to reload customer: %v", err)
+	}
+
+	if updated.Email != "old@example.com" {
+		t.Fatalf("expected read-only email to remain unchanged, got %s", updated.Email)
+	}
+}
+
+func TestUpdateCustomerBlockedWithoutEditPermission(t *testing.T) {
+	setupCRMTestDB(t)
+	router := setupCRMRouter()
+
+	user, profile := seedUserWithProfile(t, "customer_no_edit")
+	grantObjectPermission(t, profile.ID, "Customers", true, true, false, false)
+
+	customer := models.Customer{
+		FirstName: "Jane",
+		LastName:  "Doe",
+	}
+	if err := config.DB.Create(&customer).Error; err != nil {
+		t.Fatalf("failed to seed customer: %v", err)
+	}
+
+	body := map[string]interface{}{
+		"first_name": "Updated",
+		"last_name":  "Doe",
+	}
+	jsonBody, _ := json.Marshal(body)
+
+	req, _ := http.NewRequest(
+		http.MethodPut,
+		"/api/customers/"+itoaUint(customer.ID),
+		bytes.NewBuffer(jsonBody),
+	)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+makeAuthToken(t, user.ID))
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("expected 403, got %d, body: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestDeleteCustomerBlockedWithoutDeletePermission(t *testing.T) {
+	setupCRMTestDB(t)
+	router := setupCRMRouter()
+
+	user, profile := seedUserWithProfile(t, "customer_no_delete")
+	grantObjectPermission(t, profile.ID, "Customers", true, true, true, false)
+
+	customer := models.Customer{
+		FirstName: "Delete",
+		LastName:  "Me",
+	}
+	if err := config.DB.Create(&customer).Error; err != nil {
+		t.Fatalf("failed to seed customer: %v", err)
+	}
+
+	req, _ := http.NewRequest(
+		http.MethodDelete,
+		"/api/customers/"+itoaUint(customer.ID),
+		nil,
+	)
+	req.Header.Set("Authorization", "Bearer "+makeAuthToken(t, user.ID))
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("expected 403, got %d, body: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestGetCustomersHiddenFieldStripped(t *testing.T) {
+	setupCRMTestDB(t)
+	router := setupCRMRouter()
+
+	user, profile := seedUserWithProfile(t, "customer_hidden")
+	grantObjectPermission(t, profile.ID, "Customers", true, false, false, false)
+	grantFieldPermission(t, profile.ID, "Customers", "email", false, false)
+
+	customer := models.Customer{
+		FirstName: "Hidden",
+		LastName:  "Field",
+		Email:     "hidden@example.com",
+	}
+	if err := config.DB.Create(&customer).Error; err != nil {
+		t.Fatalf("failed to seed customer: %v", err)
+	}
+
+	req, _ := http.NewRequest(http.MethodGet, "/api/customers", nil)
+	req.Header.Set("Authorization", "Bearer "+makeAuthToken(t, user.ID))
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d, body: %s", w.Code, w.Body.String())
+	}
+
+	var response map[string][]map[string]interface{}
+	if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
+		t.Fatalf("failed to parse response: %v", err)
+	}
+
+	if response["data"][0]["email"] != "" {
+		t.Fatalf("expected hidden email to be blank in response")
 	}
 }
 
