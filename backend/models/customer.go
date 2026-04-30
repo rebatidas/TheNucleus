@@ -13,4 +13,7 @@ type Customer struct {
 	ShippingAddress string `json:"shipping_address"`
 	BillingAddress  string `json:"billing_address"`
 	CreatedBy       uint   `json:"created_by"`
+	OwnerID         uint   `json:"owner_id"`
+
+	Owner User `json:"owner,omitempty" gorm:"foreignKey:OwnerID"`
 }

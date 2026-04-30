@@ -3,7 +3,6 @@ package controllers
 import (
 	"fmt"
 	"net/http"
-	"time"
 
 	"thenucleus-backend/config"
 	"thenucleus-backend/models"
@@ -25,7 +24,7 @@ func generateCaseNumber() string {
 func CreateCase(c *gin.Context) {
 	user, err := getCurrentUserFromToken(c)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
 	}
 
@@ -33,62 +32,28 @@ func CreateCase(c *gin.Context) {
 		return
 	}
 
-	var input models.Case
+	var caseRecord models.Case
 
-	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error(),
-		})
+	if err := c.ShouldBindJSON(&caseRecord); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	if input.Status == "" {
-		input.Status = "New"
-	}
+	caseRecord.CreatedBy = user.ID
+	caseRecord.OwnerID = user.ID
 
-<<<<<<< HEAD
-	if userID, exists := c.Get("user_id"); exists {
-		input.CreatedBy = userID.(uint)
-		input.LastModifiedBy = userID.(uint)
-	}
-
-	// temporary unique value so insert succeeds
-=======
->>>>>>> ad7fbb6 (Complete US-15: profile access with object and field-level security)
-	input.CaseNumber = fmt.Sprintf("TEMP-%d", time.Now().UnixNano())
-
-	if err := config.DB.Create(&input).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
-		})
+	if err := config.DB.Create(&caseRecord).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create case"})
 		return
 	}
 
-	input.CaseNumber = fmt.Sprintf("CASE-%d", input.ID+1000)
-
-	if err := config.DB.Save(&input).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
-		})
-		return
-	}
-
-	_ = config.DB.Preload("Customer").First(&input, input.ID).Error
-
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Case created successfully",
-		"data":    filterCaseFields(input, user.ProfileID),
-	})
+	c.JSON(http.StatusCreated, gin.H{"data": caseRecord})
 }
 
 func GetCases(c *gin.Context) {
-<<<<<<< HEAD
-	view := c.DefaultQuery("view", "all_cases")
-	userID, userIDExists := c.Get("user_id")
-=======
 	user, err := getCurrentUserFromToken(c)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
 	}
 
@@ -96,88 +61,31 @@ func GetCases(c *gin.Context) {
 		return
 	}
 
+	view := c.DefaultQuery("view", "all_cases")
+
 	var cases []models.Case
->>>>>>> ad7fbb6 (Complete US-15: profile access with object and field-level security)
 
-	switch view {
-	case "my_cases":
-		if !userIDExists {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication required"})
-			return
-		}
-		var cases []models.Case
-		if err := config.DB.Preload("Customer").Where("created_by = ?", userID).Find(&cases).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch cases"})
-			return
-		}
-		c.JSON(http.StatusOK, gin.H{"data": cases})
+	query := config.DB.Preload("Customer").Preload("Owner")
 
-	case "recently_viewed":
-		if !userIDExists {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication required"})
-			return
-		}
-		thirtyDaysAgo := time.Now().AddDate(0, 0, -30)
-		var recentEntries []models.RecentlyViewed
-		config.DB.
-			Where("user_id = ? AND record_type = ? AND viewed_at > ?", userID, "case", thirtyDaysAgo).
-			Order("viewed_at desc").
-			Find(&recentEntries)
-
-		if len(recentEntries) == 0 {
-			c.JSON(http.StatusOK, gin.H{"data": []models.Case{}})
-			return
-		}
-
-		recordIDs := make([]uint, len(recentEntries))
-		for i, entry := range recentEntries {
-			recordIDs[i] = entry.RecordID
-		}
-
-		var cases []models.Case
-		config.DB.Preload("Customer").Where("id IN ?", recordIDs).Find(&cases)
-
-		// Preserve recently-viewed order
-		caseMap := make(map[uint]models.Case)
-		for _, cs := range cases {
-			caseMap[cs.ID] = cs
-		}
-		ordered := make([]models.Case, 0, len(recordIDs))
-		for _, id := range recordIDs {
-			if cs, ok := caseMap[id]; ok {
-				ordered = append(ordered, cs)
-			}
-		}
-		c.JSON(http.StatusOK, gin.H{"data": ordered})
-
-	default: // "all_cases" or anything else
-		var cases []models.Case
-		if err := config.DB.Preload("Customer").Find(&cases).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": "Failed to fetch cases",
-			})
-			return
-		}
-		c.JSON(http.StatusOK, gin.H{"data": cases})
-	}
-<<<<<<< HEAD
-=======
-
-	filtered := make([]models.Case, 0, len(cases))
-	for _, caseRecord := range cases {
-		filtered = append(filtered, filterCaseFields(caseRecord, user.ProfileID))
+	if view == "my_cases" {
+		query = query.Where("owner_id = ? OR created_by = ?", user.ID, user.ID)
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"data": filtered,
-	})
->>>>>>> ad7fbb6 (Complete US-15: profile access with object and field-level security)
+	if err := query.Find(&cases).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch cases"})
+		return
+	}
+
+	// US-16: still apply OWD + role hierarchy security
+	cases = filterCasesByRecordAccess(user, cases, "view")
+
+	c.JSON(http.StatusOK, gin.H{"data": cases})
 }
 
 func GetCaseByID(c *gin.Context) {
 	user, err := getCurrentUserFromToken(c)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
 	}
 
@@ -186,24 +94,25 @@ func GetCaseByID(c *gin.Context) {
 	}
 
 	id := c.Param("id")
-	var caseRecord models.Case
 
-	if err := config.DB.Preload("Customer").First(&caseRecord, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{
-			"error": "Case not found",
-		})
+	var caseRecord models.Case
+	if err := config.DB.Preload("Customer").Preload("Owner").First(&caseRecord, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Case not found"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"data": filterCaseFields(caseRecord, user.ProfileID),
-	})
+	if !canAccessCaseRecord(user, &caseRecord, "view") {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": caseRecord})
 }
 
 func UpdateCase(c *gin.Context) {
 	user, err := getCurrentUserFromToken(c)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
 	}
 
@@ -212,72 +121,38 @@ func UpdateCase(c *gin.Context) {
 	}
 
 	id := c.Param("id")
-	var caseRecord models.Case
 
+	var caseRecord models.Case
 	if err := config.DB.First(&caseRecord, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{
-			"error": "Case not found",
-		})
+		c.JSON(http.StatusNotFound, gin.H{"error": "Case not found"})
+		return
+	}
+
+	if !canAccessCaseRecord(user, &caseRecord, "edit") {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied"})
 		return
 	}
 
 	var input models.Case
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error(),
-		})
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-<<<<<<< HEAD
-	caseRecord.Status = input.Status
-	caseRecord.Subject = input.Subject
-	caseRecord.Description = input.Description
-	caseRecord.CustomerID = input.CustomerID
-	caseRecord.Resolution = input.Resolution
+	input.LastModifiedBy = user.ID
 
-	if userID, exists := c.Get("user_id"); exists {
-		caseRecord.LastModifiedBy = userID.(uint)
-	}
-=======
-	if !isFieldReadOnly(user.ProfileID, "Cases", "status") {
-		caseRecord.Status = input.Status
-	}
-	if !isFieldReadOnly(user.ProfileID, "Cases", "subject") {
-		caseRecord.Subject = input.Subject
-	}
-	if !isFieldReadOnly(user.ProfileID, "Cases", "description") {
-		caseRecord.Description = input.Description
-	}
-	if !isFieldReadOnly(user.ProfileID, "Cases", "customer_id") {
-		caseRecord.CustomerID = input.CustomerID
-	}
-	if !isFieldReadOnly(user.ProfileID, "Cases", "resolution") {
-		caseRecord.Resolution = input.Resolution
-	}
-
-	caseRecord.LastModifiedBy = input.LastModifiedBy
->>>>>>> ad7fbb6 (Complete US-15: profile access with object and field-level security)
-
-	if err := config.DB.Save(&caseRecord).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to update case",
-		})
+	if err := config.DB.Model(&caseRecord).Updates(input).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update case"})
 		return
 	}
 
-	_ = config.DB.Preload("Customer").First(&caseRecord, caseRecord.ID).Error
-
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Case updated successfully",
-		"data":    filterCaseFields(caseRecord, user.ProfileID),
-	})
+	c.JSON(http.StatusOK, gin.H{"data": caseRecord})
 }
 
 func DeleteCase(c *gin.Context) {
 	user, err := getCurrentUserFromToken(c)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
 	}
 
@@ -286,25 +161,24 @@ func DeleteCase(c *gin.Context) {
 	}
 
 	id := c.Param("id")
-	var caseRecord models.Case
 
+	var caseRecord models.Case
 	if err := config.DB.First(&caseRecord, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{
-			"error": "Case not found",
-		})
+		c.JSON(http.StatusNotFound, gin.H{"error": "Case not found"})
+		return
+	}
+
+	if !canAccessCaseRecord(user, &caseRecord, "delete") {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied"})
 		return
 	}
 
 	if err := config.DB.Delete(&caseRecord).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to delete case",
-		})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete case"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Case deleted successfully",
-	})
+	c.JSON(http.StatusOK, gin.H{"message": "Case deleted"})
 }
 
 func GetCasesByCustomerID(c *gin.Context) {

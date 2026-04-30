@@ -28,15 +28,19 @@ import {
 import { Navigate, useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import SetupRolesSection from "../components/SetupRolesSection";
-<<<<<<< HEAD
-=======
 import SetupProfilesSection from "../components/SetupProfilesSection";
+import SetupSharingSettingsSection from "../components/SetupSharingSettingsSection";
 import { usePermissions } from "../hooks/usePermissions";
->>>>>>> ad7fbb6 (Complete US-15: profile access with object and field-level security)
 
 const { Title } = Typography;
 
-type SetupSection = "users" | "roles" | "company" | "profiles" | null;
+type SetupSection =
+  | "users"
+  | "roles"
+  | "company"
+  | "profiles"
+  | "sharing"
+  | null;
 
 type UserRecord = {
   ID: number;
@@ -47,10 +51,7 @@ type UserRecord = {
   email: string;
   created_at?: string;
   role_id?: number | null;
-<<<<<<< HEAD
-=======
   profile_id?: number | null;
->>>>>>> ad7fbb6 (Complete US-15: profile access with object and field-level security)
 };
 
 type RoleRecord = {
@@ -58,15 +59,12 @@ type RoleRecord = {
   label: string;
   role_name: string;
   reports_to_id?: number | null;
-<<<<<<< HEAD
-=======
 };
 
 type ProfileRecord = {
   ID: number;
   name: string;
   description?: string;
->>>>>>> ad7fbb6 (Complete US-15: profile access with object and field-level security)
 };
 
 type CompanyInformation = {
@@ -87,10 +85,7 @@ type UserFormValues = {
   username?: string;
   email: string;
   role_id?: number | null;
-<<<<<<< HEAD
-=======
   profile_id?: number | null;
->>>>>>> ad7fbb6 (Complete US-15: profile access with object and field-level security)
 };
 
 export default function Setup() {
@@ -107,12 +102,9 @@ export default function Setup() {
   const [roles, setRoles] = useState<RoleRecord[]>([]);
   const [rolesLoading, setRolesLoading] = useState(false);
 
-<<<<<<< HEAD
-=======
   const [profiles, setProfiles] = useState<ProfileRecord[]>([]);
   const [profilesLoading, setProfilesLoading] = useState(false);
 
->>>>>>> ad7fbb6 (Complete US-15: profile access with object and field-level security)
   const [companyInfo, setCompanyInfo] = useState<CompanyInformation | null>(
     null
   );
@@ -127,11 +119,7 @@ export default function Setup() {
 
   const navigate = useNavigate();
 
-  const {
-    canViewObject,
-    isFieldVisible,
-    isFieldReadOnly,
-  } = usePermissions();
+  const { isFieldVisible, isFieldReadOnly } = usePermissions();
 
   const token = localStorage.getItem("token");
   if (!token) {
@@ -170,15 +158,16 @@ export default function Setup() {
     }
   };
 
- const items: MenuProps["items"] = useMemo(
-  () => [
-    { key: "users", icon: <UserOutlined />, label: "Users" },
-    { key: "roles", icon: <ApartmentOutlined />, label: "Roles" },
-    { key: "profiles", icon: <UserOutlined />, label: "Profiles" },
-    { key: "company", icon: <BankOutlined />, label: "Company Information" },
-  ],
-  []
-);
+  const items: MenuProps["items"] = useMemo(
+    () => [
+      { key: "users", icon: <UserOutlined />, label: "Users" },
+      { key: "roles", icon: <ApartmentOutlined />, label: "Roles" },
+      { key: "profiles", icon: <UserOutlined />, label: "Profiles" },
+      { key: "sharing", icon: <SettingOutlined />, label: "Sharing Settings" },
+      { key: "company", icon: <BankOutlined />, label: "Company Information" },
+    ],
+    []
+  );
 
   const filteredItems =
     items?.filter((item) =>
@@ -212,8 +201,6 @@ export default function Setup() {
     }
   };
 
-<<<<<<< HEAD
-=======
   const fetchProfiles = async () => {
     try {
       setProfilesLoading(true);
@@ -226,7 +213,6 @@ export default function Setup() {
     }
   };
 
->>>>>>> ad7fbb6 (Complete US-15: profile access with object and field-level security)
   const fetchCompanyInformation = async () => {
     try {
       setCompanyLoading(true);
@@ -259,10 +245,7 @@ export default function Setup() {
     if (selectedKey === "users") {
       fetchUsers();
       fetchRoles();
-<<<<<<< HEAD
-=======
       fetchProfiles();
->>>>>>> ad7fbb6 (Complete US-15: profile access with object and field-level security)
     }
 
     if (selectedKey === "roles") {
@@ -275,7 +258,10 @@ export default function Setup() {
   }, [selectedKey]);
 
   useEffect(() => {
-    if (selectedKey && !filteredItems.some((item) => item?.key === selectedKey)) {
+    if (
+      selectedKey &&
+      !filteredItems.some((item) => item?.key === selectedKey)
+    ) {
       setSelectedKey(null);
     }
   }, [filteredItems, selectedKey]);
@@ -288,10 +274,7 @@ export default function Setup() {
       username: record.username || "",
       email: record.email || "",
       role_id: record.role_id ?? undefined,
-<<<<<<< HEAD
-=======
       profile_id: record.profile_id ?? undefined,
->>>>>>> ad7fbb6 (Complete US-15: profile access with object and field-level security)
     });
     setIsUserModalOpen(true);
   };
@@ -311,10 +294,7 @@ export default function Setup() {
       await api.put(`/api/users/${selectedUser.ID}`, {
         ...values,
         role_id: values.role_id ?? null,
-<<<<<<< HEAD
-=======
         profile_id: values.profile_id ?? null,
->>>>>>> ad7fbb6 (Complete US-15: profile access with object and field-level security)
       });
 
       messageApi.success("User updated successfully");
@@ -358,15 +338,12 @@ export default function Setup() {
     return role?.label || "-";
   };
 
-<<<<<<< HEAD
-=======
   const getProfileName = (profileId?: number | null) => {
     if (!profileId) return "-";
     const profile = profiles.find((item) => item.ID === profileId);
     return profile?.name || "-";
   };
 
->>>>>>> ad7fbb6 (Complete US-15: profile access with object and field-level security)
   const userColumns: ColumnsType<UserRecord> = [
     {
       title: "Name",
@@ -415,11 +392,6 @@ export default function Setup() {
           },
         ]
       : []),
-    {
-      title: "Role",
-      key: "role",
-      render: (_, record) => getRoleLabel(record.role_id),
-    },
     {
       title: "Action",
       key: "action",
@@ -472,6 +444,7 @@ export default function Setup() {
           <Title level={3} style={{ marginTop: 0 }}>
             Users
           </Title>
+
           <Table
             rowKey="ID"
             columns={userColumns}
@@ -549,18 +522,6 @@ export default function Setup() {
               </Form.Item>
             ) : null}
 
-            <Form.Item name="role_id" label="Role">
-              <Select
-                allowClear
-                placeholder="Select role"
-                loading={rolesLoading}
-                options={roles.map((role) => ({
-                  label: role.label,
-                  value: role.ID,
-                }))}
-              />
-            </Form.Item>
-
             <Form.Item style={{ marginBottom: 0 }}>
               <Space style={{ width: "100%", justifyContent: "flex-end" }}>
                 <Button onClick={closeUserModal}>Cancel</Button>
@@ -595,17 +556,6 @@ export default function Setup() {
         </Title>
 
         <Form form={companyForm} layout="vertical" onFinish={handleCompanySave}>
-<<<<<<< HEAD
-          <Form.Item
-            name="organization_name"
-            label="Organization Name"
-            rules={[
-              { required: true, message: "Please enter Organization Name" },
-            ]}
-          >
-            <Input disabled={!!companyInfo && !isEditingCompany} />
-          </Form.Item>
-=======
           {isFieldVisible("Company Information", "organization_name") ? (
             <Form.Item
               name="organization_name"
@@ -622,7 +572,6 @@ export default function Setup() {
               />
             </Form.Item>
           ) : null}
->>>>>>> ad7fbb6 (Complete US-15: profile access with object and field-level security)
 
           {isFieldVisible("Company Information", "website") ? (
             <Form.Item name="website" label="Website">
@@ -714,6 +663,7 @@ export default function Setup() {
                       Cancel
                     </Button>
                   ) : null}
+
                   <Button
                     type="primary"
                     htmlType="submit"
@@ -742,12 +692,12 @@ export default function Setup() {
       case "roles":
         return <SetupRolesSection companyInfo={companyInfo} />;
 
-<<<<<<< HEAD
-=======
       case "profiles":
         return <SetupProfilesSection />;
 
->>>>>>> ad7fbb6 (Complete US-15: profile access with object and field-level security)
+      case "sharing":
+        return <SetupSharingSettingsSection />;
+
       case "company":
         return renderCompanySection();
 
