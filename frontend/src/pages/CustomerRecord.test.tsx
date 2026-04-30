@@ -30,6 +30,7 @@ vi.mock("react-router-dom", async () => {
   const actual = await vi.importActual<typeof import("react-router-dom")>(
     "react-router-dom"
   );
+
   return {
     ...actual,
     useNavigate: () => mockNavigate,
@@ -78,7 +79,8 @@ vi.mock("../hooks/usePermissions", () => ({
     isFieldVisible: (objectName: string, fieldName: string) =>
       objectName !== "Customers" || permissionState.visibleFields.has(fieldName),
     isFieldReadOnly: (objectName: string, fieldName: string) =>
-      objectName === "Customers" && permissionState.readOnlyFields.has(fieldName),
+      objectName === "Customers" &&
+      permissionState.readOnlyFields.has(fieldName),
   }),
 }));
 
@@ -95,11 +97,8 @@ function renderPage() {
 describe("CustomerRecord", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-<<<<<<< HEAD
-    // Default: recently-viewed POST resolves silently so .catch() doesn't throw
-    vi.mocked(api.post).mockResolvedValue({ data: {} } as any);
-  });
-=======
+    mockNavigate.mockClear();
+
     permissionState.customerView = true;
     permissionState.customerEdit = true;
     permissionState.customerDelete = true;
@@ -116,7 +115,8 @@ describe("CustomerRecord", () => {
       "billing_address",
     ]);
     permissionState.readOnlyFields = new Set();
->>>>>>> ad7fbb6 (Complete US-15: profile access with object and field-level security)
+
+    vi.mocked(api.post).mockResolvedValue({ data: {} } as any);
 
     vi.mocked(api.get).mockImplementation((url: string) => {
       if (url === "/api/customers/9") {

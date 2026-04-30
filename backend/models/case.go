@@ -16,9 +16,11 @@ type Case struct {
 	Resolution     string         `json:"resolution"`
 	CreatedBy      uint           `json:"created_by"`
 	LastModifiedBy uint           `json:"last_modified_by"`
+	OwnerID        uint           `json:"owner_id"`
 	CreatedAt      time.Time      `json:"created_date"`
 	UpdatedAt      time.Time      `json:"last_modified_date"`
 	DeletedAt      gorm.DeletedAt `json:"-" gorm:"index"`
 
 	Customer Customer `json:"customer,omitempty" gorm:"foreignKey:CustomerID" binding:"-"`
+	Owner    User     `json:"owner,omitempty" gorm:"foreignKey:OwnerID" binding:"-"`
 }

@@ -94,9 +94,6 @@ export default function Cases() {
   const [customerForm] = Form.useForm<CustomerFormValues>();
   const [messageApi, contextHolder] = message.useMessage();
 
-<<<<<<< HEAD
-  const fetchCases = async (view: string = "all_cases") => {
-=======
   const {
     canViewObject,
     canCreateObject,
@@ -108,8 +105,7 @@ export default function Cases() {
   const canCreateCases = canCreateObject("Cases");
   const canCreateCustomers = canCreateObject("Customers");
 
-  const fetchCases = async () => {
->>>>>>> ad7fbb6 (Complete US-15: profile access with object and field-level security)
+  const fetchCases = async (view: string = selectedListView) => {
     try {
       setLoading(true);
       const response = await api.get<CaseResponse>(`/api/cases?view=${view}`);
@@ -126,27 +122,23 @@ export default function Cases() {
       const response = await api.get<CustomerResponse>("/api/customers");
       setCustomers(response.data.data || []);
     } catch (err: any) {
-      // Only show this if case customer field is actually visible/used
       if (isFieldVisible("Cases", "customer_id")) {
-        messageApi.error(err?.response?.data?.error ?? "Error fetching customers");
+        messageApi.error(
+          err?.response?.data?.error ?? "Error fetching customers"
+        );
       }
     }
   };
 
   useEffect(() => {
-<<<<<<< HEAD
-    fetchCases("all_cases");
-    fetchCustomers();
-  }, []);
-=======
     if (!canViewCases) return;
-    fetchCases();
+
+    fetchCases("all_cases");
 
     if (isFieldVisible("Cases", "customer_id")) {
       fetchCustomers();
     }
   }, [canViewCases]);
->>>>>>> ad7fbb6 (Complete US-15: profile access with object and field-level security)
 
   const handleListViewChange = (value: string) => {
     setSelectedListView(value);
@@ -214,7 +206,9 @@ export default function Cases() {
 
       const response = await api.post("/api/cases", {
         customer_id:
-          values.customer_id === "new_customer" ? undefined : values.customer_id,
+          values.customer_id === "new_customer"
+            ? undefined
+            : values.customer_id,
         subject: values.subject,
         description: values.description,
         status: values.status,
@@ -229,7 +223,7 @@ export default function Cases() {
       if (createdCase?.id) {
         navigate(`/cases/${createdCase.id}`);
       } else {
-        fetchCases();
+        fetchCases(selectedListView);
       }
     } catch (err: any) {
       messageApi.error(err?.response?.data?.error ?? "Error creating case");
@@ -384,7 +378,12 @@ export default function Cases() {
                     value: customer.ID,
                   })),
                   ...(canCreateCustomers
-                    ? [{ label: "+ New Customer", value: "new_customer" as const }]
+                    ? [
+                        {
+                          label: "+ New Customer",
+                          value: "new_customer" as const,
+                        },
+                      ]
                     : []),
                 ]}
               />
@@ -451,7 +450,11 @@ export default function Cases() {
         width={700}
         destroyOnClose
       >
-        <Form form={customerForm} layout="vertical" onFinish={handleCreateCustomer}>
+        <Form
+          form={customerForm}
+          layout="vertical"
+          onFinish={handleCreateCustomer}
+        >
           <Form.Item name="salutation" label="Salutation">
             <Input />
           </Form.Item>
@@ -506,7 +509,11 @@ export default function Cases() {
           <Form.Item style={{ marginBottom: 0 }}>
             <Space style={{ width: "100%", justifyContent: "flex-end" }}>
               <Button onClick={closeCustomerModal}>Cancel</Button>
-              <Button type="primary" htmlType="submit" loading={isCustomerSaving}>
+              <Button
+                type="primary"
+                htmlType="submit"
+                loading={isCustomerSaving}
+              >
                 Save
               </Button>
             </Space>

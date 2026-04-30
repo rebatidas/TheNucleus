@@ -12,10 +12,8 @@ import (
 )
 
 func main() {
-	// Initialize Gin
 	r := gin.Default()
 
-	// 🔥 CORS Configuration (Frontend Integration Fix)
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"http://localhost:5173"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
@@ -24,37 +22,27 @@ func main() {
 		MaxAge:           12 * time.Hour,
 	}))
 
-	// Connect to Database
 	config.ConnectDB()
 
-	// Auto migrate models
-<<<<<<< HEAD
-	config.DB.AutoMigrate(&models.User{}, &models.Customer{}, &models.Case{}, &models.Queue{}, &models.CompanyInformation{}, &models.RecentlyViewed{}, &models.Role{})
-=======
 	config.DB.AutoMigrate(
 		&models.User{},
 		&models.Customer{},
 		&models.Case{},
 		&models.Queue{},
 		&models.CompanyInformation{},
+		&models.RecentlyViewed{},
 		&models.Role{},
 		&models.Profile{},
 		&models.ObjectPermission{},
 		&models.FieldPermission{},
+		&models.OrgWideDefault{},
 	)
->>>>>>> ad7fbb6 (Complete US-15: profile access with object and field-level security)
 
-	// Setup routes
 	routes.SetupRoutes(r)
 
-	// Health check route
 	r.GET("/", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"success": true,
-			"message": "TheNucleus Backend Running",
-		})
+		c.JSON(200, gin.H{"success": true, "message": "TheNucleus Backend Running"})
 	})
 
-	// Start server
 	r.Run(":8080")
 }

@@ -7,6 +7,18 @@ import { api } from "../api/client";
 
 const mockNavigate = vi.fn();
 
+const customerFixture = {
+  ID: 1,
+  salutation: "Mr.",
+  first_name: "John",
+  middle_name: "",
+  last_name: "Doe",
+  email: "john@test.com",
+  phone: "1234567890",
+  shipping_address: "Ship address",
+  billing_address: "Bill address",
+};
+
 const permissionState = {
   view: true,
   create: true,
@@ -56,19 +68,6 @@ vi.mock("../api/client", () => ({
   },
 }));
 
-<<<<<<< HEAD
-const customerFixture = {
-  ID: 1,
-  salutation: "Mr.",
-  first_name: "John",
-  middle_name: "",
-  last_name: "Doe",
-  email: "john@test.com",
-  phone: "1234567890",
-  shipping_address: "Ship address",
-  billing_address: "Bill address",
-};
-=======
 vi.mock("../hooks/usePermissions", () => ({
   usePermissions: () => ({
     canViewObject: (objectName: string) =>
@@ -78,12 +77,13 @@ vi.mock("../hooks/usePermissions", () => ({
     canEditObject: () => true,
     canDeleteObject: () => true,
     isFieldVisible: (objectName: string, fieldName: string) =>
-      objectName !== "Customers" || permissionState.visibleFields.has(fieldName),
+      objectName !== "Customers" ||
+      permissionState.visibleFields.has(fieldName),
     isFieldReadOnly: (objectName: string, fieldName: string) =>
-      objectName === "Customers" && permissionState.readOnlyFields.has(fieldName),
+      objectName === "Customers" &&
+      permissionState.readOnlyFields.has(fieldName),
   }),
 }));
->>>>>>> ad7fbb6 (Complete US-15: profile access with object and field-level security)
 
 describe("Customers", () => {
   beforeEach(() => {
@@ -106,19 +106,7 @@ describe("Customers", () => {
   it("renders customer list from API", async () => {
     vi.mocked(api.get).mockResolvedValue({
       data: {
-        data: [
-          {
-            ID: 1,
-            salutation: "Mr.",
-            first_name: "John",
-            middle_name: "",
-            last_name: "Doe",
-            email: "john@test.com",
-            phone: "1234567890",
-            shipping_address: "Ship address",
-            billing_address: "Bill address",
-          },
-        ],
+        data: [customerFixture],
       },
     } as any);
 
@@ -133,11 +121,85 @@ describe("Customers", () => {
     expect(screen.getByText("1234567890")).toBeInTheDocument();
   });
 
+  it("defaults to All Customers view", async () => {
+    vi.mocked(api.get).mockResolvedValue({
+      data: { data: [] },
+    } as any);
+
+    render(
+      <MemoryRouter>
+        <Customers />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(api.get).toHaveBeenCalledWith(
+        expect.stringContaining("view=all_customers")
+      );
+    });
+  });
+
+  it("fetches with my_customers view when My Customers is selected", async () => {
+    vi.mocked(api.get).mockResolvedValue({
+      data: { data: [customerFixture] },
+    } as any);
+
+    render(
+      <MemoryRouter>
+        <Customers />
+      </MemoryRouter>
+    );
+
+    await screen.findByText("Mr. John Doe");
+
+    vi.mocked(api.get).mockResolvedValue({
+      data: { data: [] },
+    } as any);
+
+    const select = document.querySelector(".ant-select-selector")!;
+    fireEvent.mouseDown(select);
+
+    fireEvent.click(await screen.findByText("My Customers"));
+
+    await waitFor(() => {
+      expect(api.get).toHaveBeenCalledWith(
+        expect.stringContaining("view=my_customers")
+      );
+    });
+  });
+
+  it("fetches with recently_viewed when Recently Viewed is selected", async () => {
+    vi.mocked(api.get).mockResolvedValue({
+      data: { data: [customerFixture] },
+    } as any);
+
+    render(
+      <MemoryRouter>
+        <Customers />
+      </MemoryRouter>
+    );
+
+    await screen.findByText("Mr. John Doe");
+
+    vi.mocked(api.get).mockResolvedValue({
+      data: { data: [] },
+    } as any);
+
+    const select = document.querySelector(".ant-select-selector")!;
+    fireEvent.mouseDown(select);
+
+    fireEvent.click(await screen.findByText("Recently Viewed"));
+
+    await waitFor(() => {
+      expect(api.get).toHaveBeenCalledWith(
+        expect.stringContaining("view=recently_viewed")
+      );
+    });
+  });
+
   it("creates a new customer and navigates to record page", async () => {
     vi.mocked(api.get).mockResolvedValue({
-      data: {
-        data: [],
-      },
+      data: { data: [] },
     } as any);
 
     vi.mocked(api.post).mockResolvedValue({
@@ -199,13 +261,8 @@ describe("Customers", () => {
     expect(mockNavigate).toHaveBeenCalledWith("/customers/101");
   });
 
-<<<<<<< HEAD
-  it("defaults to All Customers view", async () => {
-    vi.mocked(api.get).mockResolvedValue({ data: { data: [] } } as any);
-=======
   it("shows no access message when customer view permission is missing", async () => {
     permissionState.view = false;
->>>>>>> ad7fbb6 (Complete US-15: profile access with object and field-level security)
 
     render(
       <MemoryRouter>
@@ -213,18 +270,6 @@ describe("Customers", () => {
       </MemoryRouter>
     );
 
-<<<<<<< HEAD
-    await waitFor(() => {
-      expect(api.get).toHaveBeenCalledWith(
-        expect.stringContaining("view=all_customers")
-      );
-    });
-  });
-
-  it("fetches with my_customers view when My Customers is selected", async () => {
-    vi.mocked(api.get).mockResolvedValue({
-      data: { data: [customerFixture] },
-=======
     expect(
       screen.getByText(/you do not have access to customers/i)
     ).toBeInTheDocument();
@@ -236,7 +281,6 @@ describe("Customers", () => {
 
     vi.mocked(api.get).mockResolvedValue({
       data: { data: [] },
->>>>>>> ad7fbb6 (Complete US-15: profile access with object and field-level security)
     } as any);
 
     render(
@@ -245,30 +289,10 @@ describe("Customers", () => {
       </MemoryRouter>
     );
 
-<<<<<<< HEAD
-    await screen.findByText("Mr. John Doe");
-
-    vi.mocked(api.get).mockResolvedValue({ data: { data: [] } } as any);
-
-    const select = document.querySelector(".ant-select-selector")!;
-    fireEvent.mouseDown(select);
-
-    const myOption = await screen.findByText("My Customers");
-    fireEvent.click(myOption);
-
     await waitFor(() => {
       expect(api.get).toHaveBeenCalledWith(
-        expect.stringContaining("view=my_customers")
+        expect.stringContaining("view=all_customers")
       );
-    });
-  });
-
-  it("fetches with recently_viewed when Recently Viewed is selected", async () => {
-    vi.mocked(api.get).mockResolvedValue({
-      data: { data: [customerFixture] },
-=======
-    await waitFor(() => {
-      expect(api.get).toHaveBeenCalledWith("/api/customers");
     });
 
     expect(
@@ -281,7 +305,6 @@ describe("Customers", () => {
 
     vi.mocked(api.get).mockResolvedValue({
       data: { data: [] },
->>>>>>> ad7fbb6 (Complete US-15: profile access with object and field-level security)
     } as any);
 
     render(
@@ -290,27 +313,6 @@ describe("Customers", () => {
       </MemoryRouter>
     );
 
-<<<<<<< HEAD
-    await screen.findByText("Mr. John Doe");
-
-    vi.mocked(api.get).mockResolvedValue({ data: { data: [] } } as any);
-
-    const select = document.querySelector(".ant-select-selector")!;
-    fireEvent.mouseDown(select);
-
-    const recentOption = await screen.findByText("Recently Viewed");
-    fireEvent.click(recentOption);
-
-    await waitFor(() => {
-      expect(api.get).toHaveBeenCalledWith(
-        expect.stringContaining("view=recently_viewed")
-      );
-    });
-  });
-
-  it("shows empty state when no customers are returned", async () => {
-    vi.mocked(api.get).mockResolvedValue({ data: { data: [] } } as any);
-=======
     fireEvent.click(await screen.findByRole("button", { name: /^new$/i }));
     await screen.findByText("New Customer");
 
@@ -328,7 +330,6 @@ describe("Customers", () => {
     vi.mocked(api.get).mockResolvedValue({
       data: { data: [] },
     } as any);
->>>>>>> ad7fbb6 (Complete US-15: profile access with object and field-level security)
 
     render(
       <MemoryRouter>
@@ -336,15 +337,25 @@ describe("Customers", () => {
       </MemoryRouter>
     );
 
-<<<<<<< HEAD
-    expect(await screen.findByText("No customers found")).toBeInTheDocument();
-=======
     fireEvent.click(await screen.findByRole("button", { name: /^new$/i }));
     await screen.findByText("New Customer");
 
     expect(screen.getByLabelText(/email/i)).toBeDisabled();
     expect(screen.getByLabelText(/phone/i)).toBeDisabled();
     expect(screen.getByLabelText(/first name/i)).not.toBeDisabled();
->>>>>>> ad7fbb6 (Complete US-15: profile access with object and field-level security)
+  });
+
+  it("shows empty state when no customers are returned", async () => {
+    vi.mocked(api.get).mockResolvedValue({
+      data: { data: [] },
+    } as any);
+
+    render(
+      <MemoryRouter>
+        <Customers />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText("No customers found")).toBeInTheDocument();
   });
 });

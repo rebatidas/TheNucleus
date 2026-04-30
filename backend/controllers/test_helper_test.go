@@ -32,30 +32,24 @@ func setupCRMTestDB(t *testing.T) {
 		&models.FieldPermission{},
 		&models.Customer{},
 		&models.Case{},
-<<<<<<< HEAD
-		&models.RecentlyViewed{},
-	); err != nil {
-=======
 		&models.CompanyInformation{},
+		&models.RecentlyViewed{},
+		&models.OrgWideDefault{},
 	)
 	if err != nil {
->>>>>>> ad7fbb6 (Complete US-15: profile access with object and field-level security)
 		t.Fatalf("failed to migrate test db: %v", err)
 	}
 
 	config.DB = db
 }
 
-// setupCRMRouter creates a router without any user context (for unauthenticated tests).
 func setupCRMRouter() *gin.Engine {
 	gin.SetMode(gin.TestMode)
 
 	r := gin.Default()
 
-	// auth
 	r.GET("/api/auth/me-permissions", GetMyPermissions)
 
-	// profiles
 	r.GET("/api/profiles", GetProfiles)
 	r.POST("/api/profiles", CreateProfile)
 	r.GET("/api/profiles/:id", GetProfileByID)
@@ -64,14 +58,12 @@ func setupCRMRouter() *gin.Engine {
 	r.PUT("/api/profiles/:id/object-permissions", UpsertObjectPermissions)
 	r.PUT("/api/profiles/:id/field-permissions", UpsertFieldPermissions)
 
-	// customers
 	r.GET("/api/customers", GetCustomers)
 	r.POST("/api/customers", CreateCustomer)
 	r.GET("/api/customers/:id", GetCustomerByID)
 	r.PUT("/api/customers/:id", UpdateCustomer)
 	r.DELETE("/api/customers/:id", DeleteCustomer)
 
-	// cases
 	r.GET("/api/cases", GetCases)
 	r.POST("/api/cases", CreateCase)
 	r.GET("/api/cases/:id", GetCaseByID)
@@ -79,31 +71,31 @@ func setupCRMRouter() *gin.Engine {
 	r.DELETE("/api/cases/:id", DeleteCase)
 	r.GET("/api/customer-cases/:customerId", GetCasesByCustomerID)
 
+	r.POST("/api/recently-viewed/customers/:id", LogRecentlyViewedCustomer)
+	r.POST("/api/recently-viewed/cases/:id", LogRecentlyViewedCase)
+	r.GET("/api/recently-viewed/customers", GetRecentlyViewedCustomers)
+	r.GET("/api/recently-viewed/cases", GetRecentlyViewedCases)
+
+	r.GET("/api/org-wide-defaults", GetOrgWideDefaults)
+	r.PUT("/api/org-wide-defaults", UpsertOrgWideDefaults)
+
 	return r
 }
 
-// setupCRMRouterWithUser creates a router that injects the given userID into every request context,
-// simulating a logged-in user without requiring a real JWT.
 func setupCRMRouterWithUser(userID uint) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 
 	r := gin.Default()
 
-	injectUser := func(c *gin.Context) {
+	r.Use(func(c *gin.Context) {
 		c.Set("user_id", userID)
 		c.Next()
-	}
+	})
 
-	r.GET("/api/customers", injectUser, GetCustomers)
-	r.POST("/api/customers", injectUser, CreateCustomer)
-	r.GET("/api/customers/:id", GetCustomerByID)
-
-	r.GET("/api/customer-cases/:customerId", GetCasesByCustomerID)
-	r.GET("/api/cases", injectUser, GetCases)
-	r.POST("/api/cases", injectUser, CreateCase)
-
-	r.POST("/api/recently-viewed/customers/:id", injectUser, LogRecentlyViewedCustomer)
-	r.POST("/api/recently-viewed/cases/:id", injectUser, LogRecentlyViewedCase)
+	r.POST("/api/recently-viewed/customers/:id", LogRecentlyViewedCustomer)
+	r.POST("/api/recently-viewed/cases/:id", LogRecentlyViewedCase)
+	r.GET("/api/recently-viewed/customers", GetRecentlyViewedCustomers)
+	r.GET("/api/recently-viewed/cases", GetRecentlyViewedCases)
 
 	return r
 }
@@ -130,6 +122,34 @@ func seedUserWithProfile(t *testing.T, profileName string) (models.User, models.
 		Name:      "Test User",
 		Email:     fmt.Sprintf("%s@test.com", profileName),
 		Password:  "hashed-password",
+		ProfileID: &profile.ID,
+	}
+	if err := config.DB.Create(&user).Error; err != nil {
+		t.Fatalf("failed to create user: %v", err)
+	}
+
+	return user, profile
+}
+
+func seedUserWithRoleAndProfile(t *testing.T, username string, roleID *uint) (models.User, models.Profile) {
+	t.Helper()
+
+	profile := models.Profile{
+		Name:        username + "_profile",
+		Description: "test profile",
+	}
+	if err := config.DB.Create(&profile).Error; err != nil {
+		t.Fatalf("failed to create profile: %v", err)
+	}
+
+	user := models.User{
+		FirstName: "Test",
+		LastName:  username,
+		Username:  username,
+		Name:      "Test " + username,
+		Email:     username + "@test.com",
+		Password:  "hashed-password",
+		RoleID:    roleID,
 		ProfileID: &profile.ID,
 	}
 	if err := config.DB.Create(&user).Error; err != nil {
@@ -169,6 +189,17 @@ func grantFieldPermission(t *testing.T, profileID uint, objectName, fieldName st
 
 	if err := config.DB.Create(&record).Error; err != nil {
 		t.Fatalf("failed to create field permission: %v", err)
+	}
+}
+
+func seedOWD(t *testing.T, objectName string, accessLevel string) {
+	t.Helper()
+
+	if err := config.DB.Create(&models.OrgWideDefault{
+		ObjectName:  objectName,
+		AccessLevel: accessLevel,
+	}).Error; err != nil {
+		t.Fatalf("failed to seed OWD: %v", err)
 	}
 }
 

@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import Cases from "./Cases";
@@ -22,40 +22,6 @@ const permissionState = {
   readOnlyFields: new Set<string>(),
 };
 
-vi.mock("react-router-dom", async () => {
-  const actual = await vi.importActual<typeof import("react-router-dom")>(
-    "react-router-dom"
-  );
-
-  return {
-    ...actual,
-    useNavigate: () => mockNavigate,
-  };
-});
-
-vi.mock("../components/AppLayout", () => ({
-  default: ({
-    children,
-    title,
-  }: {
-    children: React.ReactNode;
-    title?: string;
-  }) => (
-    <div>
-      {title && <h1>{title}</h1>}
-      {children}
-    </div>
-  ),
-}));
-
-vi.mock("../api/client", () => ({
-  api: {
-    get: vi.fn(),
-    post: vi.fn(),
-  },
-}));
-
-<<<<<<< HEAD
 const caseFixture = {
   id: 1,
   case_number: "CASE-1001",
@@ -92,15 +58,50 @@ function mockGetForView(cases: object[]) {
     if (url.startsWith("/api/cases")) {
       return Promise.resolve({ data: { data: cases } } as any);
     }
+
     if (url.startsWith("/api/customers")) {
       return Promise.resolve({
         data: { data: [customerFixture] },
       } as any);
     }
+
     return Promise.reject(new Error(`Unhandled GET url: ${url}`));
   });
 }
-=======
+
+vi.mock("react-router-dom", async () => {
+  const actual = await vi.importActual<typeof import("react-router-dom")>(
+    "react-router-dom"
+  );
+
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+  };
+});
+
+vi.mock("../components/AppLayout", () => ({
+  default: ({
+    children,
+    title,
+  }: {
+    children: React.ReactNode;
+    title?: string;
+  }) => (
+    <div>
+      {title && <h1>{title}</h1>}
+      {children}
+    </div>
+  ),
+}));
+
+vi.mock("../api/client", () => ({
+  api: {
+    get: vi.fn(),
+    post: vi.fn(),
+  },
+}));
+
 vi.mock("../hooks/usePermissions", () => ({
   usePermissions: () => ({
     canViewObject: (objectName: string) =>
@@ -118,11 +119,12 @@ vi.mock("../hooks/usePermissions", () => ({
       objectName === "Cases" && permissionState.readOnlyFields.has(fieldName),
   }),
 }));
->>>>>>> ad7fbb6 (Complete US-15: profile access with object and field-level security)
 
 describe("Cases", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockNavigate.mockClear();
+
     permissionState.view = true;
     permissionState.create = true;
     permissionState.customerCreate = true;
@@ -183,8 +185,7 @@ describe("Cases", () => {
     const select = document.querySelector(".ant-select-selector")!;
     fireEvent.mouseDown(select);
 
-    const myOption = await screen.findByText("My Cases");
-    fireEvent.click(myOption);
+    fireEvent.click(await screen.findByText("My Cases"));
 
     await waitFor(() => {
       expect(api.get).toHaveBeenCalledWith(
@@ -209,8 +210,7 @@ describe("Cases", () => {
     const select = document.querySelector(".ant-select-selector")!;
     fireEvent.mouseDown(select);
 
-    const recentOption = await screen.findByText("Recently Viewed");
-    fireEvent.click(recentOption);
+    fireEvent.click(await screen.findByText("Recently Viewed"));
 
     await waitFor(() => {
       expect(api.get).toHaveBeenCalledWith(
@@ -262,22 +262,21 @@ describe("Cases", () => {
     const selectBoxes = modal.querySelectorAll(".ant-select-selector");
     fireEvent.mouseDown(selectBoxes[0]);
 
-    const customerOption = await screen.findByText("Mr. John Doe");
-    fireEvent.click(customerOption);
+    fireEvent.click(await screen.findByText("Mr. John Doe"));
 
-    fireEvent.change(screen.getByLabelText(/subject/i), {
+    fireEvent.change(within(modal).getByLabelText(/subject/i), {
       target: { value: "Login problem" },
     });
 
-    fireEvent.change(screen.getByLabelText(/description/i), {
+    fireEvent.change(within(modal).getByLabelText(/description/i), {
       target: { value: "Cannot log in" },
     });
 
-    fireEvent.change(screen.getByLabelText(/resolution/i), {
+    fireEvent.change(within(modal).getByLabelText(/resolution/i), {
       target: { value: "Pending" },
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+    fireEvent.click(within(modal).getByRole("button", { name: /^save$/i }));
 
     await waitFor(() => {
       expect(api.post).toHaveBeenCalledWith("/api/cases", {
@@ -291,9 +290,6 @@ describe("Cases", () => {
 
     expect(mockNavigate).toHaveBeenCalledWith("/cases/2");
   });
-<<<<<<< HEAD
-});
-=======
 
   it("shows no access message when case view permission is missing", () => {
     permissionState.view = false;
@@ -313,9 +309,7 @@ describe("Cases", () => {
   it("hides New button when case create permission is missing", async () => {
     permissionState.create = false;
 
-    vi.mocked(api.get).mockResolvedValue({
-      data: { data: [] },
-    } as any);
+    mockGetForView([]);
 
     render(
       <MemoryRouter>
@@ -324,7 +318,9 @@ describe("Cases", () => {
     );
 
     await waitFor(() => {
-      expect(api.get).toHaveBeenCalledWith("/api/cases");
+      expect(api.get).toHaveBeenCalledWith(
+        expect.stringContaining("view=all_cases")
+      );
     });
 
     expect(
@@ -335,9 +331,7 @@ describe("Cases", () => {
   it("hides case fields that are not visible", async () => {
     permissionState.visibleFields = new Set(["subject"]);
 
-    vi.mocked(api.get).mockResolvedValue({
-      data: { data: [] },
-    } as any);
+    mockGetForView([]);
 
     render(
       <MemoryRouter>
@@ -354,17 +348,7 @@ describe("Cases", () => {
   it("disables read-only case fields in create modal", async () => {
     permissionState.readOnlyFields = new Set(["subject", "status"]);
 
-    vi.mocked(api.get).mockImplementation((url: string) => {
-      if (url === "/api/cases") {
-        return Promise.resolve({ data: { data: [] } } as any);
-      }
-      if (url === "/api/customers") {
-        return Promise.resolve({
-          data: { data: [{ ID: 10, first_name: "John", last_name: "Doe" }] },
-        } as any);
-      }
-      return Promise.reject(new Error(`Unhandled GET url: ${url}`));
-    });
+    mockGetForView([]);
 
     render(
       <MemoryRouter>
@@ -373,9 +357,10 @@ describe("Cases", () => {
     );
 
     fireEvent.click(await screen.findByRole("button", { name: /^new$/i }));
-    await screen.findByText("New Case");
 
-    expect(screen.getByLabelText(/subject/i)).toBeDisabled();
+    const title = await screen.findByText("New Case");
+    const modal = title.closest(".ant-modal") as HTMLElement;
+
+    expect(within(modal).getByLabelText(/subject/i)).toBeDisabled();
   });
 });
->>>>>>> ad7fbb6 (Complete US-15: profile access with object and field-level security)
